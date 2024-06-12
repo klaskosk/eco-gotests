@@ -16,6 +16,7 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/nto" //nolint:misspell
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/cluster"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/powermanagement/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/powermanagement/internal/tsparams"
@@ -42,7 +43,7 @@ var _ = Describe("Per-core runtime power states tuning", Label(tsparams.LabelPow
 		Expect(len(nodeList)).To(Equal(1), "Currently only SNO clusters are supported")
 
 		nodeName = nodeList[0].Object.Name
-		perfProfile, err = helper.GetPerformanceProfileWithCPUSet()
+		perfProfile, err = ranhelper.GetPerformanceProfileWithCPUSet(raninittools.Spoke1APIClient)
 		Expect(err).ToNot(HaveOccurred(), "Failed to get performance profile")
 
 		originalPerfProfileSpec = perfProfile.Object.Spec
@@ -58,7 +59,7 @@ var _ = Describe("Per-core runtime power states tuning", Label(tsparams.LabelPow
 			DeleteAndWait(tsparams.PowerSaveTimeout)
 		Expect(err).ToNot(HaveOccurred(), "Failed to delete priv pod namespace")
 
-		perfProfile, err = helper.GetPerformanceProfileWithCPUSet()
+		perfProfile, err = ranhelper.GetPerformanceProfileWithCPUSet(raninittools.Spoke1APIClient)
 		Expect(err).ToNot(HaveOccurred(), "Failed to get performance profile")
 
 		if reflect.DeepEqual(perfProfile.Object.Spec, originalPerfProfileSpec) {

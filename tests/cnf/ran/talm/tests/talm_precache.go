@@ -19,6 +19,7 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/pod"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/cluster"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/helper"
@@ -63,12 +64,12 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				}
 
 				By("creating CGU with created operator upgrade policy")
-				cguBuilder := getPrecacheCGU(policies, []string{tsparams.Spoke1Name})
+				cguBuilder := getPrecacheCGU(policies, []string{ranparam.Spoke1Name})
 				_, err := cguBuilder.Create()
 				Expect(err).ToNot(HaveOccurred(), "Failed to create CGU")
 
 				By("waiting until CGU pre cache Succeeded")
-				assertPrecacheStatus(tsparams.Spoke1Name, "Succeeded")
+				assertPrecacheStatus(ranparam.Spoke1Name, "Succeeded")
 
 				By("verifying image precache pod succeeded on spoke")
 				err = checkPrecachePodLog(raninittools.Spoke1APIClient)
@@ -85,7 +86,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 
 			It("tests for ocp cache with version", func() {
 				By("creating and applying policy with clusterversion CR that defines the upgrade graph, channel, and version")
-				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{tsparams.Spoke1Name})
+				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{ranparam.Spoke1Name})
 
 				clusterVersion, err := helper.GetClusterVersionDefinition("Version", raninittools.Spoke1APIClient)
 				Expect(err).ToNot(HaveOccurred(), "Failed to get cluster version definition")
@@ -94,7 +95,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to setup cgu with cluster version")
 
 				By("waiting until CGU Succeeded")
-				assertPrecacheStatus(tsparams.Spoke1Name, "Succeeded")
+				assertPrecacheStatus(ranparam.Spoke1Name, "Succeeded")
 
 				By("waiting until new precache pod in spoke1 succeeded and log reports done")
 				err = checkPrecachePodLog(raninittools.Spoke1APIClient)
@@ -150,7 +151,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 
 			It("tests for ocp cache with image", func() {
 				By("creating and applying policy with clusterversion that defines the upgrade graph, channel, and version")
-				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{tsparams.Spoke1Name})
+				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{ranparam.Spoke1Name})
 
 				clusterVersion, err := helper.GetClusterVersionDefinition("Image", raninittools.Spoke1APIClient)
 				Expect(err).ToNot(HaveOccurred(), "Failed to get cluster version definition")
@@ -159,7 +160,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to setup cgu with cluster version")
 
 				By("waiting until CGU Succeeded")
-				assertPrecacheStatus(tsparams.Spoke1Name, "Succeeded")
+				assertPrecacheStatus(ranparam.Spoke1Name, "Succeeded")
 
 				By("waiting until new precache pod in spoke1 succeeded and log reports done")
 				err = checkPrecachePodLog(raninittools.Spoke1APIClient)
@@ -184,7 +185,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 
 			// 59948 - Configurable filters for precache images.
 			It("tests precache image filtering", reportxml.ID("59948"), func() {
-				versionInRange, err := helper.IsVersionStringInRange(tsparams.TalmVersion, "4.13", "")
+				versionInRange, err := ranhelper.IsVersionStringInRange(ranparam.TalmVersion, "4.13", "")
 				Expect(err).ToNot(HaveOccurred(), "Failed to compare TALM version string")
 
 				if !versionInRange {
@@ -198,7 +199,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to create a configmap on hub for excluding images")
 
 				By("creating a cgu and setting it up with an image filter")
-				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{tsparams.Spoke1Name})
+				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{ranparam.Spoke1Name})
 
 				clusterVersion, err := helper.GetClusterVersionDefinition("Image", raninittools.Spoke1APIClient)
 				Expect(err).ToNot(HaveOccurred(), "Failed to get cluster version definition")
@@ -207,7 +208,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to setup cgu with cluster version")
 
 				By("waiting until CGU Succeeded")
-				assertPrecacheStatus(tsparams.Spoke1Name, "Succeeded")
+				assertPrecacheStatus(ranparam.Spoke1Name, "Succeeded")
 
 				By("generating list of precached images on spoke 1")
 				preCachedImages, err := cluster.ExecCmdWithStdout(
@@ -228,7 +229,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 
 			// 64746 - Precache User-Specified Image
 			It("tests custom image precaching using a PreCachingConfig CR", reportxml.ID("64746"), func() {
-				versionInRange, err := helper.IsVersionStringInRange(tsparams.TalmVersion, "4.14", "")
+				versionInRange, err := ranhelper.IsVersionStringInRange(ranparam.TalmVersion, "4.14", "")
 				Expect(err).ToNot(HaveOccurred(), "Failed to compare TALM version string")
 
 				if !versionInRange {
@@ -268,7 +269,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to create PreCachingConfig on hub")
 
 				By("defining a CGU with a PreCachingConfig specified")
-				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{tsparams.Spoke1Name})
+				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{ranparam.Spoke1Name})
 				cguBuilder.Definition.Spec.PreCachingConfigRef = v1alpha1.PreCachingConfigCR{
 					Name:      tsparams.PreCachingConfigName,
 					Namespace: tsparams.TestNamespace,
@@ -282,7 +283,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to setup cgu with cluster version")
 
 				By("waiting until CGU Succeeded")
-				assertPrecacheStatus(tsparams.Spoke1Name, "Succeeded")
+				assertPrecacheStatus(ranparam.Spoke1Name, "Succeeded")
 
 				spokeImageListCmd := fmt.Sprintf(`podman images  --noheading --filter reference=%s`, targetPrecacheImage)
 				By("checking images list on spoke for targetImage")
@@ -300,7 +301,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 			})
 
 			It("tests custom image precaching using an invalid image", func() {
-				versionInRange, err := helper.IsVersionStringInRange(tsparams.TalmVersion, "4.14", "")
+				versionInRange, err := ranhelper.IsVersionStringInRange(ranparam.TalmVersion, "4.14", "")
 				Expect(err).ToNot(HaveOccurred(), "Failed to compare TALM version string")
 
 				if !versionInRange {
@@ -318,7 +319,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to create PreCachingConfig on hub")
 
 				By("defining a CGU with a PreCachingConfig specified")
-				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{tsparams.Spoke1Name})
+				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{ranparam.Spoke1Name})
 				cguBuilder.Definition.Spec.PreCachingConfigRef = v1alpha1.PreCachingConfigCR{
 					Name:      tsparams.PreCachingConfigName,
 					Namespace: tsparams.TestNamespace,
@@ -332,12 +333,12 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to setup cgu with cluster version")
 
 				By("waiting until CGU pre cache failed with UnrecoverableError")
-				assertPrecacheStatus(tsparams.Spoke1Name, "UnrecoverableError")
+				assertPrecacheStatus(ranparam.Spoke1Name, "UnrecoverableError")
 			})
 
 			// 64751 - Precache with Large Disk
 			It("tests precaching disk space checks using preCachingConfig", reportxml.ID("64751"), func() {
-				versionInRange, err := helper.IsVersionStringInRange(tsparams.TalmVersion, "4.14", "")
+				versionInRange, err := ranhelper.IsVersionStringInRange(ranparam.TalmVersion, "4.14", "")
 				Expect(err).ToNot(HaveOccurred(), "Failed to compare TALM version string")
 
 				if !versionInRange {
@@ -355,7 +356,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to create PreCachingConfig on hub")
 
 				By("defining a CGU with a PreCachingConfig specified")
-				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{tsparams.Spoke1Name})
+				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{ranparam.Spoke1Name})
 				cguBuilder.Definition.Spec.PreCachingConfigRef = v1alpha1.PreCachingConfigCR{
 					Name:      tsparams.PreCachingConfigName,
 					Namespace: tsparams.TestNamespace,
@@ -369,7 +370,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to setup CGU with cluster version")
 
 				By("waiting until CGU pre cache failed with UnrecoverableError")
-				assertPrecacheStatus(tsparams.Spoke1Name, "UnrecoverableError")
+				assertPrecacheStatus(ranparam.Spoke1Name, "UnrecoverableError")
 			})
 		})
 	})
@@ -418,7 +419,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 			// 54286 - Unblock Batch OCP Upgrade
 			It("verifies precaching fails for one spoke and succeeds for the other", reportxml.ID("54286"), func() {
 				By("creating and setting up CGU")
-				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{tsparams.Spoke1Name, tsparams.Spoke2Name})
+				cguBuilder := getPrecacheCGU([]string{tsparams.PolicyName}, []string{ranparam.Spoke1Name, ranparam.Spoke2Name})
 
 				clusterVersion, err := helper.GetClusterVersionDefinition("Both", raninittools.Spoke2APIClient)
 				Expect(err).ToNot(HaveOccurred(), "Failed to get cluster version definition")
@@ -431,7 +432,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to wait for pre cache to be valid")
 
 				By("waiting until CGU Succeeded")
-				assertPrecacheStatus(tsparams.Spoke2Name, "Succeeded")
+				assertPrecacheStatus(ranparam.Spoke2Name, "Succeeded")
 
 				By("enabling CGU")
 				cguBuilder.Definition.Spec.Enable = ptr.To(true)
@@ -443,7 +444,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to wait for CGU to report one spoke failed precaching")
 
 				By("checking CGU reports spoke 1 failed with UnrecoverableError")
-				assertPrecacheStatus(tsparams.Spoke1Name, "UnrecoverableError")
+				assertPrecacheStatus(ranparam.Spoke1Name, "UnrecoverableError")
 			})
 		})
 
@@ -453,8 +454,8 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 			BeforeAll(func() {
 				By("creating and setting up CGU with two spokes, one unavailable")
 				cguBuilder = cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 1).
-					WithCluster(tsparams.Spoke1Name).
-					WithCluster(tsparams.Spoke2Name).
+					WithCluster(ranparam.Spoke1Name).
+					WithCluster(ranparam.Spoke2Name).
 					WithManagedPolicy(tsparams.PolicyName)
 				cguBuilder.Definition.Spec.RemediationStrategy.Timeout = 17
 
@@ -483,7 +484,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(errorList).To(BeEmpty(), "Failed to clean up test resources on hub")
 
 				By("deleting label from managed cluster")
-				err := helper.DeleteClusterLabel(tsparams.Spoke2Name, talmCompleteLabel)
+				err := helper.DeleteClusterLabel(ranparam.Spoke2Name, talmCompleteLabel)
 				Expect(err).ToNot(HaveOccurred(), "Failed to delete label from managed cluster")
 			})
 
@@ -491,7 +492,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 			It("verifies CGU fails on 'down' spoke in first batch and succeeds for 'up' spoke in second batch",
 				reportxml.ID("54854"), func() {
 					By("waiting for spoke 2 to complete successfully")
-					err := helper.WaitForClusterInCguCompleted(cguBuilder, tsparams.Spoke2Name, 22*time.Minute)
+					err := helper.WaitForClusterInCguCompleted(cguBuilder, ranparam.Spoke2Name, 22*time.Minute)
 					Expect(err).ToNot(HaveOccurred(), "Failed to wait for spoke 2 batch remediation progress to complete")
 
 					By("waiting for the CGU to timeout")
@@ -502,12 +503,12 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 			// 59946 - Post completion action on a per cluster basis
 			It("verifies CGU afterCompletion action executes on spoke2 when spoke1 is offline", reportxml.ID("59946"), func() {
 				By("checking spoke 2 for post-action label present")
-				labelPresent, err := helper.DoesClusterLabelExist(tsparams.Spoke2Name, talmCompleteLabel)
+				labelPresent, err := helper.DoesClusterLabelExist(ranparam.Spoke2Name, talmCompleteLabel)
 				Expect(err).ToNot(HaveOccurred(), "Failed to check if spoke 2 has post-action label")
 				Expect(labelPresent).To(BeTrue(), "Cluster post-action label was not present on spoke 2")
 
 				By("checking spoke 1 for post-action label not present")
-				labelPresent, err = helper.DoesClusterLabelExist(tsparams.Spoke1Name, talmCompleteLabel)
+				labelPresent, err = helper.DoesClusterLabelExist(ranparam.Spoke1Name, talmCompleteLabel)
 				Expect(err).ToNot(HaveOccurred(), "Failed to check if cluster post-action label exists on spoke 1")
 				Expect(labelPresent).To(BeFalse(), "Cluster post-action label was present on spoke 1")
 			})
@@ -626,7 +627,8 @@ func copyPoliciesWithSubscription(policies []*ocm.PolicyBuilder) []string {
 			"checking for subscriptions on policy %s in namespace %s", policy.Definition.Name, policy.Definition.Namespace)
 
 		template := policy.Object.Spec.PolicyTemplates[0]
-		configPolicy := unmarshalRaw[configurationPolicyv1.ConfigurationPolicy](template.ObjectDefinition.Raw)
+		configPolicy, err := ranhelper.UnmarshalRaw[configurationPolicyv1.ConfigurationPolicy](template.ObjectDefinition.Raw)
+		Expect(err).ToNot(HaveOccurred(), "Failed to unmarhal raw configuration policy")
 
 		for _, objectTemplate := range configPolicy.Spec.ObjectTemplates {
 			untyped := &unstructured.Unstructured{}
@@ -648,9 +650,11 @@ func copyPoliciesWithSubscription(policies []*ocm.PolicyBuilder) []string {
 			copiedConfigPolicy := configPolicy.DeepCopy()
 
 			for _, config := range copiedConfigPolicy.Spec.ObjectTemplates {
-				typed := unmarshalRaw[subscriptionsv1alpha1.Subscription](config.ObjectDefinition.Raw)
+				typed, err := ranhelper.UnmarshalRaw[subscriptionsv1alpha1.Subscription](config.ObjectDefinition.Raw)
+				Expect(err).ToNot(HaveOccurred(), "Failed to unmarhal raw subscription")
+
 				config.ObjectDefinition.Raw = nil
-				config.ObjectDefinition.Object = &typed
+				config.ObjectDefinition.Object = typed
 			}
 
 			// this will never get created so the name is just a placeholder
@@ -672,7 +676,7 @@ func copyPoliciesWithSubscription(policies []*ocm.PolicyBuilder) []string {
 			Expect(err).ToNot(HaveOccurred(), "Failed to create policy with suffix %s", suffix)
 
 			err = helper.CreatePolicyComponents(
-				raninittools.HubAPIClient, suffix, []string{tsparams.Spoke1Name}, metav1.LabelSelector{})
+				raninittools.HubAPIClient, suffix, []string{ranparam.Spoke1Name}, metav1.LabelSelector{})
 			Expect(err).ToNot(HaveOccurred(), "Failed to create policy components with suffix %s", suffix)
 
 			err = policyBuilder.WaitUntilComplianceState(policiesv1.NonCompliant, 5*time.Minute)
@@ -683,17 +687,4 @@ func copyPoliciesWithSubscription(policies []*ocm.PolicyBuilder) []string {
 	}
 
 	return suffixes
-}
-
-// unmarshalRaw converts raw bytes for a K8s CR into the actual type.
-func unmarshalRaw[T any](raw []byte) T {
-	untyped := &unstructured.Unstructured{}
-	err := untyped.UnmarshalJSON(raw)
-	Expect(err).ToNot(HaveOccurred(), "Failed to unmarshal JSON into unstructured")
-
-	var typed T
-	err = runtime.DefaultUnstructuredConverter.FromUnstructured(untyped.UnstructuredContent(), &typed)
-	Expect(err).ToNot(HaveOccurred(), "Failed to convert unstructed to structured")
-
-	return typed
 }

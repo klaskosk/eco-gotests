@@ -10,6 +10,7 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/tsparams"
 	"k8s.io/utils/ptr"
@@ -20,16 +21,6 @@ var _ = Describe("TALM backup tests", Label(tsparams.LabelBackupTestCases), func
 		loopbackDevicePath string
 		err                error
 	)
-
-	BeforeEach(func() {
-		By("checking that the talm version is at least 4.11")
-		versionInRange, err := helper.IsVersionStringInRange(tsparams.TalmVersion, "4.11", "")
-		Expect(err).ToNot(HaveOccurred(), "Failed to compared talm version string")
-
-		if !versionInRange {
-			Skip("backup tests require talm 4.11 or higher")
-		}
-	})
 
 	When("there is a single spoke", func() {
 		BeforeEach(func() {
@@ -65,7 +56,7 @@ var _ = Describe("TALM backup tests", Label(tsparams.LabelBackupTestCases), func
 			It("should have a failed cgu for single spoke", reportxml.ID("50835"), func() {
 				By("applying all the required CRs for backup")
 				cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 1).
-					WithCluster(tsparams.Spoke1Name).
+					WithCluster(ranparam.Spoke1Name).
 					WithManagedPolicy(tsparams.PolicyName)
 				cguBuilder.Definition.Spec.Backup = true
 
@@ -73,26 +64,16 @@ var _ = Describe("TALM backup tests", Label(tsparams.LabelBackupTestCases), func
 				Expect(err).ToNot(HaveOccurred(), "Failed to setup cgu")
 
 				By("waiting for cgu to fail for spoke1")
-				assertBackupStatus(tsparams.Spoke1Name, "UnrecoverableError")
+				assertBackupStatus(ranparam.Spoke1Name, "UnrecoverableError")
 			})
 		})
 
 		Context("with CGU disabled", func() {
-			BeforeEach(func() {
-				By("checking that the talm version is at least 4.12")
-				versionInRange, err := helper.IsVersionStringInRange(tsparams.TalmVersion, "4.12", "")
-				Expect(err).ToNot(HaveOccurred(), "Failed to compare talm version string")
-
-				if !versionInRange {
-					Skip("CGU disabled requires talm 4.12 or higher")
-				}
-			})
-
 			// 54294 - Cluster Backup and Precaching in a Disabled CGU
 			It("verifies backup begins and succeeds after CGU is enabled", reportxml.ID("54294"), func() {
 				By("creating a disabled cgu with backup enabled")
 				cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 1).
-					WithCluster(tsparams.Spoke1Name).
+					WithCluster(ranparam.Spoke1Name).
 					WithManagedPolicy(tsparams.PolicyName)
 				cguBuilder.Definition.Spec.Backup = true
 				cguBuilder.Definition.Spec.Enable = ptr.To(false)
@@ -116,7 +97,7 @@ var _ = Describe("TALM backup tests", Label(tsparams.LabelBackupTestCases), func
 				Expect(err).ToNot(HaveOccurred(), "Failed to start backup")
 
 				By("waiting for cgu to indicate backup succeeded for spoke")
-				assertBackupStatus(tsparams.Spoke1Name, "Succeeded")
+				assertBackupStatus(ranparam.Spoke1Name, "Succeeded")
 			})
 
 		})
@@ -152,8 +133,8 @@ var _ = Describe("TALM backup tests", Label(tsparams.LabelBackupTestCases), func
 			By("applying all the required CRs for backup")
 			// max concurrency of 2 so both spokes are in the same batch
 			cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 2).
-				WithCluster(tsparams.Spoke1Name).
-				WithCluster(tsparams.Spoke2Name).
+				WithCluster(ranparam.Spoke1Name).
+				WithCluster(ranparam.Spoke2Name).
 				WithManagedPolicy(tsparams.PolicyName)
 			cguBuilder.Definition.Spec.Backup = true
 
@@ -161,10 +142,10 @@ var _ = Describe("TALM backup tests", Label(tsparams.LabelBackupTestCases), func
 			Expect(err).ToNot(HaveOccurred(), "Failed to setup cgu")
 
 			By("waiting for cgu to indicate it failed for spoke1")
-			assertBackupStatus(tsparams.Spoke1Name, "UnrecoverableError")
+			assertBackupStatus(ranparam.Spoke1Name, "UnrecoverableError")
 
 			By("waiting for cgu to indicate it succeeded for spoke2")
-			assertBackupStatus(tsparams.Spoke2Name, "Succeeded")
+			assertBackupStatus(ranparam.Spoke2Name, "Succeeded")
 		})
 
 	})

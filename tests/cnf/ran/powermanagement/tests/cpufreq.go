@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-kni/eco-goinfra/pkg/nto" //nolint:misspell
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/cluster"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/powermanagement/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/powermanagement/internal/tsparams"
@@ -29,7 +30,7 @@ var _ = Describe("CPU frequency tuning tests change the core frequencies of isol
 
 		BeforeEach(func() {
 
-			perfProfile, err = helper.GetPerformanceProfileWithCPUSet()
+			perfProfile, err = ranhelper.GetPerformanceProfileWithCPUSet(raninittools.Spoke1APIClient)
 			Expect(err).ToNot(HaveOccurred(), "Failed to get performance profile")
 
 			By("getting isolated core ID")

@@ -1,7 +1,9 @@
 package cluster
 
 import (
+	"context"
 	"fmt"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -12,13 +14,26 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// ExecLocalCommand runs the provided command with the provided args locally, cancelling execution if it exceeds
+// timeout.
+func ExecLocalCommand(timeout time.Duration, command string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.TODO(), timeout)
+	defer cancel()
+
+	glog.V(ranparam.LogLevel).Infof("Locally executing command '%s' with args '%v'", command, args)
+
+	output, err := exec.CommandContext(ctx, command, args...).Output()
+
+	return string(output), err
+}
+
 // ExecCmd executes a command on the provided client on each node matching nodeSelector, retrying on internal errors
 // retries times with a 10 second delay between retries, and ignores the stdout.
 func ExecCmd(client *clients.Settings, retries uint, nodeSelector, command string) error {
 	for retry := range retries {
 		err := cluster.ExecCmd(client, nodeSelector, command)
 		if isErrorExecuting(err) {
-			glog.V(ranparam.LogLevel).Infof("Error during command execution, retry %d (%d max): %w", retry+1, retries, err)
+			glog.V(ranparam.LogLevel).Infof("Error during command execution, %d retries remaining: %w", retries-retry-1, err)
 
 			time.Sleep(10 * time.Second)
 
@@ -38,7 +53,7 @@ func ExecCmdWithStdout(
 	for retry := range retries {
 		outputs, err := cluster.ExecCmdWithStdout(client, command, options...)
 		if isErrorExecuting(err) {
-			glog.V(ranparam.LogLevel).Infof("Error during command execution, retry %d (%d max): %w", retry+1, retries, err)
+			glog.V(ranparam.LogLevel).Infof("Error during command execution, %d retries remaining: %w", retries-retry-1, err)
 
 			time.Sleep(10 * time.Second)
 

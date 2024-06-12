@@ -14,6 +14,7 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/olm"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/tsparams"
 	corev1 "k8s.io/api/core/v1"
@@ -28,14 +29,6 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 		By("checking that hub and two spokes are present")
 		Expect([]*clients.Settings{raninittools.HubAPIClient, raninittools.Spoke1APIClient, raninittools.Spoke2APIClient}).
 			ToNot(ContainElement(BeNil()), "Failed due to missing API client")
-
-		By("ensuring TALM is at least version 4.12")
-		versionInRange, err := helper.IsVersionStringInRange(tsparams.TalmVersion, "4.11", "")
-		Expect(err).ToNot(HaveOccurred(), "Failed to compare TALM version string")
-
-		if !versionInRange {
-			Skip("TALM batching tests require version 4.12 or higher")
-		}
 	})
 
 	AfterEach(func() {
@@ -77,7 +70,7 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 		It("should report the missing policy", reportxml.ID("47955"), func() {
 			By("create and enable a CGU with a managed policy that does not exist")
 			cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 1).
-				WithCluster(tsparams.Spoke1Name).
+				WithCluster(ranparam.Spoke1Name).
 				WithManagedPolicy("non-existent-policy")
 			cguBuilder.Definition.Spec.RemediationStrategy.Timeout = 1
 
@@ -108,8 +101,8 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 			By("creating the CGU and associated resources")
 			// Use a max concurrency of 1 so we can verify the CGU aborts after the first batch fails
 			cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 1).
-				WithCluster(tsparams.Spoke1Name).
-				WithCluster(tsparams.Spoke2Name).
+				WithCluster(ranparam.Spoke1Name).
+				WithCluster(ranparam.Spoke2Name).
 				WithManagedPolicy(tsparams.PolicyName)
 			cguBuilder.Definition.Spec.RemediationStrategy.Timeout = 9
 			cguBuilder.Definition.Spec.Enable = ptr.To(false)
@@ -170,8 +163,8 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 			By("creating the CGU and associated resources")
 			// This test uses a max concurrency of 2 so both spokes are in the same batch.
 			cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 2).
-				WithCluster(tsparams.Spoke1Name).
-				WithCluster(tsparams.Spoke2Name).
+				WithCluster(ranparam.Spoke1Name).
+				WithCluster(ranparam.Spoke2Name).
 				WithManagedPolicy(tsparams.PolicyName)
 			cguBuilder.Definition.Spec.RemediationStrategy.Timeout = 9
 			cguBuilder.Definition.Spec.Enable = ptr.To(false)
@@ -210,8 +203,8 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 			By("creating the CGU and associated resources")
 			// Max concurrency of one to ensure two batches are used.
 			cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 1).
-				WithCluster(tsparams.Spoke1Name).
-				WithCluster(tsparams.Spoke2Name).
+				WithCluster(ranparam.Spoke1Name).
+				WithCluster(ranparam.Spoke2Name).
 				WithManagedPolicy(tsparams.PolicyName)
 			cguBuilder.Definition.Spec.RemediationStrategy.Timeout = 9
 			cguBuilder.Definition.Spec.Enable = ptr.To(false)
@@ -254,8 +247,8 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 				By("creating the CGU and associated resources")
 				// Max concurrency of one to ensure two batches are used.
 				cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 1).
-					WithCluster(tsparams.Spoke1Name).
-					WithCluster(tsparams.Spoke2Name).
+					WithCluster(ranparam.Spoke1Name).
+					WithCluster(ranparam.Spoke2Name).
 					WithManagedPolicy(tsparams.PolicyName)
 				cguBuilder.Definition.Spec.RemediationStrategy.Timeout = expectedTimeout
 				cguBuilder.Definition.Spec.Enable = ptr.To(false)
@@ -312,7 +305,7 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 
 			By("creating the CGU and associated resources")
 			cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 1).
-				WithCluster(tsparams.Spoke1Name).
+				WithCluster(ranparam.Spoke1Name).
 				WithManagedPolicy(tsparams.PolicyName)
 			cguBuilder.Definition.Spec.RemediationStrategy.Timeout = expectedTimeout
 			cguBuilder.Definition.Spec.Enable = ptr.To(false)
@@ -372,7 +365,7 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 			cguBuilder.Definition.Spec.Enable = ptr.To(false)
 
 			By(fmt.Sprintf(
-				"using MatchLabels with name %s and MatchExpressions with name %s", tsparams.Spoke1Name, tsparams.Spoke2Name))
+				"using MatchLabels with name %s and MatchExpressions with name %s", ranparam.Spoke1Name, ranparam.Spoke2Name))
 			policyLabelSelector := metav1.LabelSelector{
 				MatchExpressions: []metav1.LabelSelectorRequirement{{
 					Key:      "common",
@@ -382,11 +375,11 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 			}
 
 			cguBuilder.Definition.Spec.ClusterLabelSelectors = []metav1.LabelSelector{
-				{MatchLabels: map[string]string{"name": tsparams.Spoke1Name}},
+				{MatchLabels: map[string]string{"name": ranparam.Spoke1Name}},
 				{MatchExpressions: []metav1.LabelSelectorRequirement{{
 					Key:      "name",
 					Operator: "In",
-					Values:   []string{tsparams.Spoke2Name},
+					Values:   []string{ranparam.Spoke2Name},
 				}}},
 			}
 

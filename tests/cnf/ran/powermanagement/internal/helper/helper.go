@@ -26,24 +26,6 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-// GetPerformanceProfileWithCPUSet returns the first performance profile found with reserved and isolated cpuset.
-func GetPerformanceProfileWithCPUSet() (*nto.Builder, error) {
-	profileBuilders, err := nto.ListProfiles(raninittools.Spoke1APIClient)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, profileBuilder := range profileBuilders {
-		if profileBuilder.Object.Spec.CPU != nil &&
-			profileBuilder.Object.Spec.CPU.Reserved != nil &&
-			profileBuilder.Object.Spec.CPU.Isolated != nil {
-			return profileBuilder, nil
-		}
-	}
-
-	return nil, errors.New("failed to find performance profile with reserved and isolated CPU set")
-}
-
 // SetPowerModeAndWaitForMcpUpdate updates the performance profile with the given workload hints,
 // and waits for the mcp update.
 func SetPowerModeAndWaitForMcpUpdate(perfProfile *nto.Builder, node nodes.Builder, perPodPowerManagement,

@@ -10,6 +10,7 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/namespace"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/tsparams"
 	"k8s.io/utils/ptr"
@@ -48,9 +49,9 @@ var _ = Describe("TALM Canary Tests", Label(tsparams.LabelCanaryTestCases), func
 
 		By("creating the CGU and associated resources")
 		cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 1).
-			WithCluster(tsparams.Spoke1Name).
-			WithCluster(tsparams.Spoke2Name).
-			WithCanary(tsparams.Spoke2Name).
+			WithCluster(ranparam.Spoke1Name).
+			WithCluster(ranparam.Spoke2Name).
+			WithCanary(ranparam.Spoke2Name).
 			WithManagedPolicy(tsparams.PolicyName)
 		cguBuilder.Definition.Spec.Enable = ptr.To(false)
 		cguBuilder.Definition.Spec.RemediationStrategy.Timeout = 9
@@ -67,11 +68,11 @@ var _ = Describe("TALM Canary Tests", Label(tsparams.LabelCanaryTestCases), func
 		Expect(err).ToNot(HaveOccurred(), "Failed to enable CGU")
 
 		By("making sure the canary cluster (spoke 2) starts first")
-		err = helper.WaitForClusterInCguInProgress(cguBuilder, tsparams.Spoke2Name, 3*tsparams.TalmDefaultReconcileTime)
+		err = helper.WaitForClusterInCguInProgress(cguBuilder, ranparam.Spoke2Name, 3*tsparams.TalmDefaultReconcileTime)
 		Expect(err).ToNot(HaveOccurred(), "Failed to wait for batch remediation for spoke 2 to be in progress")
 
 		By("Making sure the non-canary cluster (spoke 1) has not started yet")
-		started, err := helper.IsClusterInCguInProgress(cguBuilder, tsparams.Spoke1Name)
+		started, err := helper.IsClusterInCguInProgress(cguBuilder, ranparam.Spoke1Name)
 		Expect(err).ToNot(HaveOccurred(), "Failed to check if batch remediation for spoke 1 is in progress")
 		Expect(started).To(BeFalse(), "Batch remediation for non-canary cluster has already started")
 
@@ -84,20 +85,20 @@ var _ = Describe("TALM Canary Tests", Label(tsparams.LabelCanaryTestCases), func
 	It("should complete the CGU where all canaries are successful", reportxml.ID("47947"), func() {
 		By("creating the CGU and associated resources")
 		cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 1).
-			WithCluster(tsparams.Spoke1Name).
-			WithCluster(tsparams.Spoke2Name).
-			WithCanary(tsparams.Spoke2Name).
+			WithCluster(ranparam.Spoke1Name).
+			WithCluster(ranparam.Spoke2Name).
+			WithCanary(ranparam.Spoke2Name).
 			WithManagedPolicy(tsparams.PolicyName)
 		cguBuilder.Definition.Spec.RemediationStrategy.Timeout = 9
 		cguBuilder, err = helper.SetupCguWithNamespace(cguBuilder, "")
 		Expect(err).ToNot(HaveOccurred(), "Failed to setup CGU")
 
 		By("making sure the canary cluster (spoke 2) starts first")
-		err := helper.WaitForClusterInCguInProgress(cguBuilder, tsparams.Spoke2Name, 3*tsparams.TalmDefaultReconcileTime)
+		err := helper.WaitForClusterInCguInProgress(cguBuilder, ranparam.Spoke2Name, 3*tsparams.TalmDefaultReconcileTime)
 		Expect(err).ToNot(HaveOccurred(), "Failed to wait for batch remediation for spoke 2 to be in progress")
 
 		By("Making sure the non-canary cluster (spoke 1) has not started yet")
-		started, err := helper.IsClusterInCguInProgress(cguBuilder, tsparams.Spoke1Name)
+		started, err := helper.IsClusterInCguInProgress(cguBuilder, ranparam.Spoke1Name)
 		Expect(err).ToNot(HaveOccurred(), "Failed to check if batch remediation for spoke 1 is in progress")
 		Expect(started).To(BeFalse(), "Batch remediation for non-canary cluster has already started")
 

@@ -11,6 +11,7 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/namespace"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/tsparams"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,16 +25,6 @@ const (
 
 var _ = Describe("TALM Blocking CRs Tests", Label(tsparams.LabelBlockingCRTestCases), func() {
 	var err error
-
-	BeforeEach(func() {
-		By("ensuring TALM is at least version 4.12")
-		versionInRange, err := helper.IsVersionStringInRange(tsparams.TalmVersion, "4.11", "")
-		Expect(err).ToNot(HaveOccurred(), "Failed to compare TALM version string")
-
-		if !versionInRange {
-			Skip("TALM blocking CR tests require version 4.12 or higher")
-		}
-	})
 
 	AfterEach(func() {
 		By("Cleaning up test resources on hub")
@@ -184,7 +175,7 @@ var _ = Describe("TALM Blocking CRs Tests", Label(tsparams.LabelBlockingCRTestCa
 
 func getBlockingCGU(suffix string, timeout int) *cgu.CguBuilder {
 	cguBuilder := cgu.NewCguBuilder(raninittools.HubAPIClient, tsparams.CguName+suffix, tsparams.TestNamespace, 1).
-		WithCluster(tsparams.Spoke1Name).
+		WithCluster(ranparam.Spoke1Name).
 		WithManagedPolicy(tsparams.PolicyName + suffix)
 	cguBuilder.Definition.Spec.RemediationStrategy.Timeout = timeout
 	cguBuilder.Definition.Spec.Enable = ptr.To(false)

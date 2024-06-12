@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/tsparams"
@@ -26,7 +27,7 @@ func TestTalm(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	err := helper.InitializeVariables()
+	err := ranhelper.InitializeTalmVersion()
 	Expect(err).ToNot(HaveOccurred())
 
 	// Make sure TALM is present

@@ -26,11 +26,10 @@ Some test suites (ZTP, TALM) require clusters to be deployed via GitOps ZTP and 
 | Name                                                 | Description                                                 |
 |------------------------------------------------------|-------------------------------------------------------------|
 | [cluster](internal/cluster/cluster.go)               | Provides a way to execute commands on clusters with retries |
-| [helper](internal/helper/helper.go)                  | Common helpers, currently just for checking pod health      |
 | [ranconfig](internal/ranconfig/config.go)            | Configures environment variables and default values         |
+| [ranhelper](internal/ranhelper/ranhelper.go)         | Common helpers used for multiple test suites                |
 | [raninittools](internal/raninittools/raninitools.go) | Provides an APIClient for access to cluster                 |
 | [ranparam](internal/ranparam/const.go)               | Labels and other constants used in the test suites          |
-| [redfish](internal/redfish/redfish.go)               | Wrapper around gofish to provide access to the Redfish API  |
 
 ### Eco-goinfra pkgs
 
@@ -77,6 +76,12 @@ These inputs are all specific to the TALM pre-cache tests. They are also all opt
 - `ECO_CNF_RAN_PTP_OPERATOR_NAMESPACE`: Namespace that the PTP operator uses.
 - `ECO_CNF_RAN_TALM_PRECACHE_POLICIES`: List of policies to copy for the precache operator tests.
 
+#### ZTP Generator Inputs
+
+This is an optional input for the ZTP generator test.
+
+- `ECO_CNF_RAN_ZTP_SITE_GENERATE_IMAGE`: Site generate image to use for creating site config CRs.
+
 ### Running the RAN test suites
 
 #### Running the container namespace hiding test suite
@@ -115,5 +120,15 @@ These inputs are all specific to the TALM pre-cache tests. They are also all opt
 ```
 
 If using more selective labels that do not include TALM pre-cache, such as with `ECO_TEST_LABELS="talm && !precache"`, then the `ECO_CNF_RAN_BMC_*` environment variables are not required.
+
+#### Running the ZTP test suite
+
+```
+# export KUBECONFIG=</path/to/spoke/kubeconfig>
+# export ECO_TEST_FEATURES=ran
+# export ECO_TEST_LABELS=ran-ztp
+# export ECO_CNF_RAN_KUBECONFIG_HUB=</path/to/hub/kubeconfig>
+# make run-tests
+```
 
 ### Additional Information

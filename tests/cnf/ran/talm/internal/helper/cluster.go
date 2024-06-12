@@ -11,7 +11,7 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/nodes"
 	"github.com/openshift-kni/eco-goinfra/pkg/ocm"
 	"github.com/openshift-kni/eco-goinfra/pkg/pod"
-	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/helper"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/tsparams"
 	v1 "github.com/openshift/api/config/v1"
@@ -170,7 +170,7 @@ func waitForAllPodsHealthy(client *clients.Settings, namespaces []string, timeou
 				}
 
 				for _, namespacePod := range namespacePods {
-					healthy := helper.IsPodHealthy(namespacePod)
+					healthy := ranhelper.IsPodHealthy(namespacePod)
 
 					// Ignore failed pod with restart policy never. This could happen in image pruner or installer pods that
 					// will never restart. For those pods, instead of restarting the same pod, a new pod will be created
