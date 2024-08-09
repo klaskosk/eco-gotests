@@ -16,6 +16,7 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/cluster"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/powermanagement/internal/collect"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/powermanagement/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/powermanagement/internal/tsparams"
 	performancev2 "github.com/openshift/cluster-node-tuning-operator/pkg/apis/performanceprofile/v2"
@@ -159,7 +160,7 @@ var _ = Describe("Per-core runtime power states tuning", Label(tsparams.LabelPow
 			Expect(err).ToNot(HaveOccurred(), "Failed to get cpuset")
 
 			By("Verify powersetting of cpus used by the pod")
-			trimmedOutput := strings.Trim(cpusetOutput.String(), " \r\n")
+			trimmedOutput := strings.TrimSpace(cpusetOutput.String())
 			cpusUsed, err := cpuset.Parse(trimmedOutput)
 			Expect(err).ToNot(HaveOccurred(), "Failed to parse cpuset output")
 
@@ -198,7 +199,7 @@ var _ = Describe("Per-core runtime power states tuning", Label(tsparams.LabelPow
 			Expect(err).ToNot(HaveOccurred(), "Failed to parse metric sampling interval")
 
 			// Determine power state to be used as a tag for the metric
-			powerState, err = helper.GetPowerState(perfProfile)
+			powerState, err = collect.GetPowerState(perfProfile)
 			Expect(err).ToNot(HaveOccurred(), "Failed to get power state for the performance profile")
 		})
 
@@ -206,7 +207,7 @@ var _ = Describe("Per-core runtime power states tuning", Label(tsparams.LabelPow
 			duration, err := time.ParseDuration(RANConfig.NoWorkloadDuration)
 			Expect(err).ToNot(HaveOccurred(), "Failed to parse no workload duration")
 
-			compMap, err := helper.CollectPowerMetricsWithNoWorkload(duration, samplingInterval, powerState)
+			compMap, err := collect.CollectPowerMetricsWithNoWorkload(duration, samplingInterval, powerState)
 			Expect(err).ToNot(HaveOccurred(), "Failed to collect power metrics with no workload")
 
 			// Persist power usage metric to ginkgo report for further processing in pipeline.
@@ -219,7 +220,7 @@ var _ = Describe("Per-core runtime power states tuning", Label(tsparams.LabelPow
 			duration, err := time.ParseDuration(RANConfig.WorkloadDuration)
 			Expect(err).ToNot(HaveOccurred(), "Failed to parse steady workload duration")
 
-			compMap, err := helper.CollectPowerMetricsWithSteadyWorkload(
+			compMap, err := collect.CollectPowerMetricsWithSteadyWorkload(
 				duration, samplingInterval, powerState, perfProfile, nodeName)
 			Expect(err).ToNot(HaveOccurred(), "Failed to collect power metrics with steady workload")
 

@@ -22,7 +22,9 @@ import (
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/version"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/helper"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/setup"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/tsparams"
 	subscriptionsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -52,7 +54,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 
 			AfterEach(func() {
 				for _, suffix := range suffixes {
-					errorList := helper.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, suffix)
+					errorList := setup.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, suffix)
 					Expect(errorList).To(BeEmpty(), "Failed to clean up resources on hub for suffix %s", suffix)
 				}
 			})
@@ -81,7 +83,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 		Context("precache OCP with version", func() {
 			AfterEach(func() {
 				By("cleaning up resources on hub")
-				errorList := helper.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
+				errorList := setup.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
 				Expect(errorList).To(BeEmpty(), "Failed to clean up test resources on hub")
 			})
 
@@ -129,7 +131,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(excludedPreCacheImages).ToNot(BeEmpty(), "Failed to get name of prometheus pod image on any nodes")
 
 				for _, image := range excludedPreCacheImages {
-					excludedPreCacheImage = strings.Trim(image, "\r\n ")
+					excludedPreCacheImage = strings.TrimSpace(image)
 					imageListCommand = fmt.Sprintf(tsparams.SpokeImageListCommand, excludedPreCacheImage)
 					imageDeleteCommand = fmt.Sprintf(tsparams.SpokeImageDeleteCommand, excludedPreCacheImage)
 
@@ -147,7 +149,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 					HubAPIClient, tsparams.PreCachingConfigName, tsparams.TestNamespace).Delete()
 				Expect(err).ToNot(HaveOccurred(), "Failed to delete PreCachingConfig on hub")
 
-				errList := helper.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
+				errList := setup.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
 				Expect(errList).To(BeEmpty(), "Failed to clean up test resources on hub")
 			})
 
@@ -188,7 +190,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 
 			// 59948 - Configurable filters for precache images.
 			It("tests precache image filtering", reportxml.ID("59948"), func() {
-				versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.13", "")
+				versionInRange, err := version.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.13", "")
 				Expect(err).ToNot(HaveOccurred(), "Failed to compare TALM version string")
 
 				if !versionInRange {
@@ -232,7 +234,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 
 			// 64746 - Precache User-Specified Image
 			It("tests custom image precaching using a PreCachingConfig CR", reportxml.ID("64746"), func() {
-				versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.14", "")
+				versionInRange, err := version.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.14", "")
 				Expect(err).ToNot(HaveOccurred(), "Failed to compare TALM version string")
 
 				if !versionInRange {
@@ -305,7 +307,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 
 			// 64747 Precache Invalid User-Specified Image
 			It("tests custom image precaching using an invalid image", reportxml.ID("64747"), func() {
-				versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.14", "")
+				versionInRange, err := version.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.14", "")
 				Expect(err).ToNot(HaveOccurred(), "Failed to compare TALM version string")
 
 				if !versionInRange {
@@ -342,7 +344,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 
 			// 64751 - Precache with Large Disk
 			It("tests precaching disk space checks using preCachingConfig", reportxml.ID("64751"), func() {
-				versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.14", "")
+				versionInRange, err := version.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.14", "")
 				Expect(err).ToNot(HaveOccurred(), "Failed to compare TALM version string")
 
 				if !versionInRange {
@@ -416,7 +418,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 		Context("precaching with one managed cluster powered off and unavailable", func() {
 			AfterEach(func() {
 				By("cleaning up resources on hub")
-				errorList := helper.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
+				errorList := setup.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
 				Expect(errorList).To(BeEmpty(), "Failed to clean up test resources on hub")
 			})
 
@@ -432,7 +434,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to setup CGU with cluster version")
 
 				By("waiting for pre cache to confirm it is valid")
-				err = helper.WaitForCguPreCacheValid(cguBuilder, 5*time.Minute)
+				cguBuilder, err = cguBuilder.WaitForCondition(tsparams.CguPreCacheValidCondition, 5*time.Minute)
 				Expect(err).ToNot(HaveOccurred(), "Failed to wait for pre cache to be valid")
 
 				By("waiting until CGU Succeeded")
@@ -444,7 +446,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				Expect(err).ToNot(HaveOccurred(), "Failed to enable CGU")
 
 				By("waiting until CGU reports one spoke failed precaching")
-				err = helper.WaitForCguPreCachePartiallyDone(cguBuilder, 5*time.Minute)
+				_, err = cguBuilder.WaitForCondition(tsparams.CguPreCachePartialCondition, 5*time.Minute)
 				Expect(err).ToNot(HaveOccurred(), "Failed to wait for CGU to report one spoke failed precaching")
 
 				By("checking CGU reports spoke 1 failed with UnrecoverableError")
@@ -480,11 +482,11 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 
 			AfterAll(func() {
 				By("cleaning up resources on spoke 2")
-				errorList := helper.CleanupTestResourcesOnSpokes([]*clients.Settings{Spoke2APIClient}, "")
+				errorList := setup.CleanupTestResourcesOnSpokes([]*clients.Settings{Spoke2APIClient}, "")
 				Expect(errorList).To(BeEmpty(), "Failed to clean up resources on spoke 2")
 
 				By("cleaning up resources on hub")
-				errorList = helper.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
+				errorList = setup.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
 				Expect(errorList).To(BeEmpty(), "Failed to clean up test resources on hub")
 
 				By("deleting label from managed cluster")
@@ -500,7 +502,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 					Expect(err).ToNot(HaveOccurred(), "Failed to wait for spoke 2 batch remediation progress to complete")
 
 					By("waiting for the CGU to timeout")
-					err = helper.WaitForCguTimeout(cguBuilder, 22*time.Minute)
+					cguBuilder, err = cguBuilder.WaitForCondition(tsparams.CguTimeoutReasonCondition, 22*time.Minute)
 					Expect(err).ToNot(HaveOccurred(), "Failed to wait for CGU to timeout")
 				})
 

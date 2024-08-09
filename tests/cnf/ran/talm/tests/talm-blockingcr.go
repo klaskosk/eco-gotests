@@ -10,10 +10,11 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/cgu"
 	"github.com/openshift-kni/eco-goinfra/pkg/namespace"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
-	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/version"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/helper"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/setup"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/tsparams"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -29,7 +30,7 @@ var _ = Describe("TALM Blocking CRs Tests", Label(tsparams.LabelBlockingCRTestCa
 
 	BeforeEach(func() {
 		By("ensuring TALM is at least version 4.12")
-		versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.11", "")
+		versionInRange, err := version.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.11", "")
 		Expect(err).ToNot(HaveOccurred(), "Failed to compare TALM version string")
 
 		if !versionInRange {
@@ -39,10 +40,10 @@ var _ = Describe("TALM Blocking CRs Tests", Label(tsparams.LabelBlockingCRTestCa
 
 	AfterEach(func() {
 		By("Cleaning up test resources on hub")
-		errList := helper.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, blockingA)
+		errList := setup.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, blockingA)
 		Expect(errList).To(BeEmpty(), "Failed to cleanup resources for blocking A on hub")
 
-		errList = helper.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, blockingB)
+		errList = setup.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, blockingB)
 		Expect(errList).To(BeEmpty(), "Failed to cleanup resources for blocking B on hub")
 
 		By("Deleting test namespaces on spoke 1")
@@ -80,11 +81,11 @@ var _ = Describe("TALM Blocking CRs Tests", Label(tsparams.LabelBlockingCRTestCa
 			Expect(err).ToNot(HaveOccurred(), "Failed to wait for CGU B to be blocked")
 
 			By("Waiting for CGU A to succeed")
-			err = helper.WaitForCguSuccessfulFinish(cguA, 12*time.Minute)
+			_, err = cguA.WaitForCondition(tsparams.CguSuccessfulFinishCondition, 12*time.Minute)
 			Expect(err).ToNot(HaveOccurred(), "Failed to wait for CGU A to succeed")
 
 			By("Waiting for CGU B to succeed")
-			err = helper.WaitForCguSuccessfulFinish(cguB, 17*time.Minute)
+			_, err = cguB.WaitForCondition(tsparams.CguSuccessfulFinishCondition, 17*time.Minute)
 			Expect(err).ToNot(HaveOccurred(), "Failed to wait for CGU B to succeed")
 		})
 	})
@@ -127,7 +128,7 @@ var _ = Describe("TALM Blocking CRs Tests", Label(tsparams.LabelBlockingCRTestCa
 			Expect(err).ToNot(HaveOccurred(), "Failed to wait for CGU B to be blocked")
 
 			By("Waiting for CGU A to fail because of timeout")
-			err = helper.WaitForCguTimeoutMessage(cguA, 7*time.Minute)
+			_, err = cguA.WaitForCondition(tsparams.CguTimeoutMessageCondition, 7*time.Minute)
 			Expect(err).ToNot(HaveOccurred(), "Failed to wait for CGU A to fail")
 
 			By("Verifiying that CGU B is still blocked")
@@ -174,11 +175,11 @@ var _ = Describe("TALM Blocking CRs Tests", Label(tsparams.LabelBlockingCRTestCa
 			Expect(err).ToNot(HaveOccurred(), "Failed to enable CGU A")
 
 			By("Waiting for CGU A to succeed")
-			err = helper.WaitForCguSucceeded(cguA, 12*time.Minute)
+			_, err = cguA.WaitForCondition(tsparams.CguSucceededCondition, 12*time.Minute)
 			Expect(err).ToNot(HaveOccurred(), "Failed to wait for CGU A to succeed")
 
 			By("Waiting for CGU B to succeed")
-			err = helper.WaitForCguSucceeded(cguB, 17*time.Minute)
+			_, err = cguB.WaitForCondition(tsparams.CguSucceededCondition, 17*time.Minute)
 			Expect(err).ToNot(HaveOccurred(), "Failed to wait for CGU B to succeed")
 		})
 	})

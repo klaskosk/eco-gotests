@@ -8,16 +8,17 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/assisted"
 	"github.com/openshift-kni/eco-goinfra/pkg/ocm"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/gitdetails"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/tsparams"
-	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/version"
 )
 
 var _ = Describe("ZTP Argo CD Clusters Tests", Label(tsparams.LabelArgoCdClustersAppTestCases), func() {
 	BeforeEach(func() {
 		By("verifying that ZTP meets the minimum version")
-		versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.ZTPVersion, "4.11", "")
+		versionInRange, err := version.IsVersionStringInRange(RANConfig.ZTPVersion, "4.11", "")
 		Expect(err).ToNot(HaveOccurred(), "Failed to compare ZTP version string")
 
 		if !versionInRange {
@@ -28,14 +29,14 @@ var _ = Describe("ZTP Argo CD Clusters Tests", Label(tsparams.LabelArgoCdCluster
 
 	AfterEach(func() {
 		By("resetting the clusters app back to the original settings")
-		err := helper.SetGitDetailsInArgoCd(
+		err := gitdetails.SetGitDetailsInArgoCd(
 			tsparams.ArgoCdClustersAppName, tsparams.ArgoCdAppDetails[tsparams.ArgoCdClustersAppName], true, false)
 		Expect(err).ToNot(HaveOccurred(), "Failed to reset clusters app git details")
 	})
 
 	// 54238 - User modification of klustletaddonconfig via gitops
 	It("should override the KlusterletAddonConfiguration and verify the change", reportxml.ID("54238"), func() {
-		exists, err := helper.UpdateArgoCdAppGitPath(tsparams.ArgoCdClustersAppName, tsparams.ZtpTestPathClustersApp, true)
+		exists, err := gitdetails.UpdateArgoCdAppGitPath(tsparams.ArgoCdClustersAppName, tsparams.ZtpTestPathClustersApp, true)
 		if !exists {
 			Skip(err.Error())
 		}
@@ -55,13 +56,13 @@ var _ = Describe("ZTP Argo CD Clusters Tests", Label(tsparams.LabelArgoCdCluster
 		// Update the git path manually so we can potentially skip the test before checking if the NM State
 		// Config exists.
 		gitDetails := tsparams.ArgoCdAppDetails[tsparams.ArgoCdClustersAppName]
-		testGitPath := helper.JoinGitPaths([]string{
+		testGitPath := gitdetails.JoinGitPaths([]string{
 			gitDetails.Path,
 			tsparams.ZtpTestPathRemoveNmState,
 		})
 
 		By("checking if the git path exists")
-		if !helper.DoesGitPathExist(gitDetails.Repo, gitDetails.Branch, testGitPath+tsparams.ZtpKustomizationPath) {
+		if !gitdetails.DoesGitPathExist(gitDetails.Repo, gitDetails.Branch, testGitPath+tsparams.ZtpKustomizationPath) {
 			Skip(fmt.Sprintf("git path '%s' could not be found", testGitPath))
 		}
 
@@ -73,7 +74,7 @@ var _ = Describe("ZTP Argo CD Clusters Tests", Label(tsparams.LabelArgoCdCluster
 		gitDetails.Path = testGitPath
 
 		By("updating the Argo CD clusters app with the remove NM state git path")
-		err = helper.SetGitDetailsInArgoCd(
+		err = gitdetails.SetGitDetailsInArgoCd(
 			tsparams.ArgoCdClustersAppName,
 			gitDetails,
 			true,

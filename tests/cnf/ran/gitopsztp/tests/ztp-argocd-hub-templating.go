@@ -15,11 +15,12 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
 	"github.com/openshift-kni/eco-goinfra/pkg/secret"
 	"github.com/openshift-kni/eco-goinfra/pkg/sriov"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/gitdetails"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/tsparams"
-	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/version"
 	corev1 "k8s.io/api/core/v1"
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
@@ -27,7 +28,7 @@ import (
 var _ = Describe("ZTP Argo CD Hub Templating Tests", Label(tsparams.LabelArgoCdHubTemplatingTestCases), func() {
 	BeforeEach(func() {
 		By("checking the ZTP version")
-		versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.ZTPVersion, "4.12", "")
+		versionInRange, err := version.IsVersionStringInRange(RANConfig.ZTPVersion, "4.12", "")
 		Expect(err).ToNot(HaveOccurred(), "Failed to check if ZTP version is in range")
 
 		if !versionInRange {
@@ -41,7 +42,7 @@ var _ = Describe("ZTP Argo CD Hub Templating Tests", Label(tsparams.LabelArgoCdH
 
 	AfterEach(func() {
 		By("resetting the policies app back to the original settings")
-		err := helper.SetGitDetailsInArgoCd(
+		err := gitdetails.SetGitDetailsInArgoCd(
 			tsparams.ArgoCdPoliciesAppName, tsparams.ArgoCdAppDetails[tsparams.ArgoCdPoliciesAppName], true, false)
 		Expect(err).ToNot(HaveOccurred(), "Failed to reset the git details for the policies app")
 
@@ -81,7 +82,7 @@ var _ = Describe("ZTP Argo CD Hub Templating Tests", Label(tsparams.LabelArgoCdH
 		// 54240 - Hub-side ACM templating with TALM
 		It("should create the policy successfully with a valid template", reportxml.ID("54240"), func() {
 			By("checking the ZTP version")
-			versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.ZTPVersion, "4.16", "")
+			versionInRange, err := version.IsVersionStringInRange(RANConfig.ZTPVersion, "4.16", "")
 			Expect(err).ToNot(HaveOccurred(), "Failed to check if ZTP version is in range")
 
 			validTestPath := tsparams.ZtpTestPathTemplatingValid
@@ -117,7 +118,7 @@ var _ = Describe("ZTP Argo CD Hub Templating Tests", Label(tsparams.LabelArgoCdH
 func setupHubTemplateTest(ztpTestPath string) {
 	By("updating the Argo CD git path")
 
-	exists, err := helper.UpdateArgoCdAppGitPath(tsparams.ArgoCdPoliciesAppName, ztpTestPath, true)
+	exists, err := gitdetails.UpdateArgoCdAppGitPath(tsparams.ArgoCdPoliciesAppName, ztpTestPath, true)
 	if !exists {
 		Skip(err.Error())
 	}
