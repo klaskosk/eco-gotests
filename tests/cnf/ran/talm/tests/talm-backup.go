@@ -9,10 +9,12 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/cgu"
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
-	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/version"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/helper"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/mount"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/setup"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/tsparams"
 	"k8s.io/utils/ptr"
 )
@@ -25,7 +27,7 @@ var _ = Describe("TALM backup tests", Label(tsparams.LabelBackupTestCases), func
 
 	BeforeEach(func() {
 		By("checking that the talm version is at least 4.11")
-		versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.11", "")
+		versionInRange, err := version.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.11", "")
 		Expect(err).ToNot(HaveOccurred(), "Failed to compared talm version string")
 
 		if !versionInRange {
@@ -33,7 +35,7 @@ var _ = Describe("TALM backup tests", Label(tsparams.LabelBackupTestCases), func
 		}
 
 		By("checking that the talm version is at most 4.15")
-		versionInRange, err = ranhelper.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "", "4.15")
+		versionInRange, err = version.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "", "4.15")
 		Expect(err).ToNot(HaveOccurred(), "Failed to compare talm version string")
 
 		if !versionInRange {
@@ -50,24 +52,24 @@ var _ = Describe("TALM backup tests", Label(tsparams.LabelBackupTestCases), func
 
 		AfterEach(func() {
 			By("cleaning up resources on hub")
-			errorList := helper.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
+			errorList := setup.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
 			Expect(errorList).To(BeEmpty(), "Failed to clean up test resources on hub")
 
 			By("cleaning up resources on spoke 1")
-			errorList = helper.CleanupTestResourcesOnSpokes([]*clients.Settings{Spoke1APIClient}, "")
+			errorList = setup.CleanupTestResourcesOnSpokes([]*clients.Settings{Spoke1APIClient}, "")
 			Expect(errorList).To(BeEmpty(), "Failed to clean up test resources on spoke 1")
 		})
 
 		Context("with full disk for spoke1", func() {
 			BeforeEach(func() {
 				By("setting up filesystem to simulate low space")
-				loopbackDevicePath, err = helper.PrepareEnvWithSmallMountPoint(Spoke1APIClient)
+				loopbackDevicePath, err = mount.PrepareEnvWithSmallMountPoint(Spoke1APIClient)
 				Expect(err).ToNot(HaveOccurred(), "Failed to prepare mount point")
 			})
 
 			AfterEach(func() {
 				By("starting disk-full env clean up")
-				err = helper.DiskFullEnvCleanup(Spoke1APIClient, loopbackDevicePath)
+				err = mount.DiskFullEnvCleanup(Spoke1APIClient, loopbackDevicePath)
 				Expect(err).ToNot(HaveOccurred(), "Failed to clean up mount point")
 			})
 
@@ -90,7 +92,7 @@ var _ = Describe("TALM backup tests", Label(tsparams.LabelBackupTestCases), func
 		Context("with CGU disabled", func() {
 			BeforeEach(func() {
 				By("checking that the talm version is at least 4.12")
-				versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.12", "")
+				versionInRange, err := version.IsVersionStringInRange(RANConfig.HubOperatorVersions[ranparam.TALM], "4.12", "")
 				Expect(err).ToNot(HaveOccurred(), "Failed to compare talm version string")
 
 				if !versionInRange {
@@ -139,21 +141,21 @@ var _ = Describe("TALM backup tests", Label(tsparams.LabelBackupTestCases), func
 				ToNot(ContainElement(BeNil()), "Failed due to missing API client")
 
 			By("setting up filesystem to simulate low space")
-			loopbackDevicePath, err = helper.PrepareEnvWithSmallMountPoint(Spoke1APIClient)
+			loopbackDevicePath, err = mount.PrepareEnvWithSmallMountPoint(Spoke1APIClient)
 			Expect(err).ToNot(HaveOccurred(), "Failed to prepare mount point")
 		})
 
 		AfterEach(func() {
 			By("cleaning up resources on hub")
-			errorList := helper.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
+			errorList := setup.CleanupTestResourcesOnHub(HubAPIClient, tsparams.TestNamespace, "")
 			Expect(errorList).To(BeEmpty(), "Failed to clean up test resources on hub")
 
 			By("starting disk-full env clean up")
-			err = helper.DiskFullEnvCleanup(Spoke1APIClient, loopbackDevicePath)
+			err = mount.DiskFullEnvCleanup(Spoke1APIClient, loopbackDevicePath)
 			Expect(err).ToNot(HaveOccurred(), "Failed to clean up mount point")
 
 			By("cleaning up resources on spokes")
-			errorList = helper.CleanupTestResourcesOnSpokes(
+			errorList = setup.CleanupTestResourcesOnSpokes(
 				[]*clients.Settings{Spoke1APIClient, Spoke2APIClient}, "")
 			Expect(errorList).To(BeEmpty(), "Failed to clean up test resources on spokes")
 		})

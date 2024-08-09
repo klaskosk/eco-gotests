@@ -12,11 +12,12 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
 	"github.com/openshift-kni/eco-goinfra/pkg/serviceaccount"
 	"github.com/openshift-kni/eco-goinfra/pkg/storage"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/gitdetails"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/tsparams"
-	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/version"
 	"github.com/openshift-kni/eco-gotests/tests/internal/cluster"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
@@ -25,7 +26,7 @@ import (
 var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPoliciesAppTestCases), func() {
 	BeforeEach(func() {
 		By("checking the ZTP version")
-		versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.ZTPVersion, "4.10", "")
+		versionInRange, err := version.IsVersionStringInRange(RANConfig.ZTPVersion, "4.10", "")
 		Expect(err).ToNot(HaveOccurred(), "Failed to check if ZTP version is in range")
 
 		if !versionInRange {
@@ -35,7 +36,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 
 	AfterEach(func() {
 		By("resetting the policies app to the original settings")
-		err := helper.SetGitDetailsInArgoCd(
+		err := gitdetails.SetGitDetailsInArgoCd(
 			tsparams.ArgoCdPoliciesAppName, tsparams.ArgoCdAppDetails[tsparams.ArgoCdPoliciesAppName], true, false)
 		Expect(err).ToNot(HaveOccurred(), "Failed to reset policies app git details")
 	})
@@ -44,7 +45,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 		// 54241 - User override of policy intervals
 		It("should specify new intervals and verify they were applied", reportxml.ID("54241"), func() {
 			By("updating Argo CD policies app")
-			exists, err := helper.UpdateArgoCdAppGitPath(
+			exists, err := gitdetails.UpdateArgoCdAppGitPath(
 				tsparams.ArgoCdPoliciesAppName, tsparams.ZtpTestPathCustomInterval, true)
 			if !exists {
 				Skip(err.Error())
@@ -85,7 +86,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 		// 54242 - Invalid time duration string for user override of policy intervals
 		It("should specify an invalid interval format and verify the app error", reportxml.ID("54242"), func() {
 			By("updating Argo CD policies app")
-			exists, err := helper.UpdateArgoCdAppGitPath(
+			exists, err := gitdetails.UpdateArgoCdAppGitPath(
 				tsparams.ArgoCdPoliciesAppName, tsparams.ZtpTestPathInvalidInterval, false)
 			if !exists {
 				Skip(err.Error())
@@ -111,7 +112,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 		AfterEach(func() {
 			// Reset the policies app before doing later restore actions so that they're not affected.
 			By("resetting the policies app to the original settings")
-			err := helper.SetGitDetailsInArgoCd(
+			err := gitdetails.SetGitDetailsInArgoCd(
 				tsparams.ArgoCdPoliciesAppName, tsparams.ArgoCdAppDetails[tsparams.ArgoCdPoliciesAppName], true, false)
 			Expect(err).ToNot(HaveOccurred(), "Failed to reset policies app git details")
 
@@ -131,7 +132,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 		// 54354 - Ability to configure local registry via du profile
 		It("verifies the image registry exists", reportxml.ID("54354"), func() {
 			By("updating Argo CD policies app")
-			exists, err := helper.UpdateArgoCdAppGitPath(
+			exists, err := gitdetails.UpdateArgoCdAppGitPath(
 				tsparams.ArgoCdPoliciesAppName, tsparams.ZtpTestPathImageRegistry, true)
 			if !exists {
 				Skip(err.Error())
@@ -214,7 +215,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 			Expect(err).To(HaveOccurred(), "Service account already exists before test")
 
 			By("updating Argo CD policies app")
-			exists, err := helper.UpdateArgoCdAppGitPath(
+			exists, err := gitdetails.UpdateArgoCdAppGitPath(
 				tsparams.ArgoCdPoliciesAppName, tsparams.ZtpTestPathCustomSourceNewCr, true)
 			if !exists {
 				Skip(err.Error())
@@ -244,7 +245,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 		It("verifies the custom source CR takes precedence over the default source CR with "+
 			"the same file name", reportxml.ID("62260"), func() {
 			By("checking the ZTP version")
-			versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.ZTPVersion, "4.14", "")
+			versionInRange, err := version.IsVersionStringInRange(RANConfig.ZTPVersion, "4.14", "")
 			Expect(err).ToNot(HaveOccurred(), "Failed to check if ZTP version is in range")
 
 			if !versionInRange {
@@ -252,7 +253,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 			}
 
 			By("updating Argo CD policies app")
-			exists, err := helper.UpdateArgoCdAppGitPath(
+			exists, err := gitdetails.UpdateArgoCdAppGitPath(
 				tsparams.ArgoCdPoliciesAppName, tsparams.ZtpTestPathCustomSourceReplaceExisting, true)
 			if !exists {
 				Skip(err.Error())
@@ -278,7 +279,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 		It("verifies a proper error is returned in ArgoCD app when a non-existent "+
 			"source-cr is used in PGT", reportxml.ID("63516"), func() {
 			By("checking the ZTP version")
-			versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.ZTPVersion, "4.14", "")
+			versionInRange, err := version.IsVersionStringInRange(RANConfig.ZTPVersion, "4.14", "")
 			Expect(err).ToNot(HaveOccurred(), "Failed to check if ZTP version is in range")
 
 			if !versionInRange {
@@ -286,7 +287,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 			}
 
 			By("updating Argo CD policies app")
-			exists, err := helper.UpdateArgoCdAppGitPath(
+			exists, err := gitdetails.UpdateArgoCdAppGitPath(
 				tsparams.ArgoCdPoliciesAppName, tsparams.ZtpTestPathCustomSourceNoCrFile, false)
 			if !exists {
 				Skip(err.Error())
@@ -307,7 +308,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 		// 64407 - Verify source CR search path implementation
 		It("verifies custom and default source CRs can be included in the same policy", reportxml.ID("64407"), func() {
 			By("checking the ZTP version")
-			versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.ZTPVersion, "4.14", "")
+			versionInRange, err := version.IsVersionStringInRange(RANConfig.ZTPVersion, "4.14", "")
 			Expect(err).ToNot(HaveOccurred(), "Failed to check if ZTP version is in range")
 
 			if !versionInRange {
@@ -323,7 +324,7 @@ var _ = Describe("ZTP Argo CD Policies Tests", Label(tsparams.LabelArgoCdPolicie
 			Expect(err).To(HaveOccurred(), "Storage class already exists before test")
 
 			By("updating Argo CD policies app")
-			exists, err := helper.UpdateArgoCdAppGitPath(
+			exists, err := gitdetails.UpdateArgoCdAppGitPath(
 				tsparams.ArgoCdPoliciesAppName, tsparams.ZtpTestPathCustomSourceSearchPath, true)
 			if !exists {
 				Skip(err.Error())

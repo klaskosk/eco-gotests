@@ -3,7 +3,6 @@ package helper
 import (
 	"context"
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -22,146 +21,17 @@ import (
 	"k8s.io/utils/ptr"
 )
 
-// WaitForCguInCondition waits up to timeout until the provided cguBuilder matches the expected status. Only the Type,
-// Status, Reason, and Message fields of expected are checked.
-func WaitForCguInCondition(
-	cguBuilder *cgu.CguBuilder,
-	expected metav1.Condition,
-	timeout time.Duration) error {
-	return wait.PollUntilContextTimeout(
-		context.TODO(), 10*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
-			if !cguBuilder.Exists() {
-				glog.V(tsparams.LogLevel).Infof(
-					"cgu %s does not exist in namespace %s", cguBuilder.Definition.Name, cguBuilder.Definition.Namespace)
-
-				return false, nil
-			}
-
-			for _, condition := range cguBuilder.Object.Status.Conditions {
-				glog.V(tsparams.LogLevel).Infof("checking if condition %v matches the expected %v", condition, expected)
-
-				matches := true
-
-				if expected.Type != "" && condition.Type != expected.Type {
-					matches = false
-				}
-
-				if matches && expected.Status != "" && condition.Status != expected.Status {
-					matches = false
-				}
-
-				if matches && expected.Message != "" && !strings.Contains(condition.Message, expected.Message) {
-					matches = false
-				}
-
-				if matches && expected.Reason != "" && condition.Reason != expected.Reason {
-					matches = false
-				}
-
-				if matches {
-					return true, nil
-				}
-			}
-
-			return false, nil
-		},
-	)
-}
-
-// WaitForCguTimeout waits up to timeout until the provided cguBuilder matches the condition for a timeout.
-func WaitForCguTimeout(cguBuilder *cgu.CguBuilder, timeout time.Duration) error {
-	return WaitForCguInCondition(
-		cguBuilder,
-		metav1.Condition{
-			Type:   tsparams.SucceededType,
-			Reason: tsparams.TimedOutReason,
-		},
-		timeout)
-}
-
-// WaitForCguTimeoutMessage waits up to timeout until the provided cguBuilder matches the condition for a timeout.
-func WaitForCguTimeoutMessage(cguBuilder *cgu.CguBuilder, timeout time.Duration) error {
-	return WaitForCguInCondition(
-		cguBuilder,
-		metav1.Condition{
-			Type:    tsparams.SucceededType,
-			Message: tsparams.TalmTimeoutMessage,
-		},
-		timeout)
-}
-
-// WaitForCguTimeoutCanary waits up to timeout until the provided cguBuilder matches the condition for a timeout due to
-// canary clusters.
-func WaitForCguTimeoutCanary(cguBuilder *cgu.CguBuilder, timeout time.Duration) error {
-	return WaitForCguInCondition(
-		cguBuilder,
-		metav1.Condition{
-			Type:    tsparams.SucceededType,
-			Message: tsparams.TalmCanaryTimeoutMessage,
-		},
-		timeout)
-}
-
-// WaitForCguSuccessfulFinish waits up to the timeout until the provided cguBuilder matches the condition for a
-// successful finish.
-func WaitForCguSuccessfulFinish(cguBuilder *cgu.CguBuilder, timeout time.Duration) error {
-	return WaitForCguInCondition(
-		cguBuilder,
-		metav1.Condition{
-			Type:   tsparams.SucceededType,
-			Reason: tsparams.CompletedReason,
-		},
-		timeout)
-}
-
-// WaitForCguSucceeded waits for up to the timeout until the provided cguBuilder matches the condition for a success.
-func WaitForCguSucceeded(cguBuilder *cgu.CguBuilder, timeout time.Duration) error {
-	return WaitForCguInCondition(
-		cguBuilder,
-		metav1.Condition{
-			Type:   tsparams.SucceededType,
-			Status: metav1.ConditionTrue,
-		},
-		timeout)
-}
-
 // WaitForCguBlocked waits up to the timeout until the provided cguBuilder matches the condition for being blocked.
 func WaitForCguBlocked(cguBuilder *cgu.CguBuilder, message string) error {
-	return WaitForCguInCondition(
-		cguBuilder,
-		metav1.Condition{
-			Type:    tsparams.ProgressingType,
-			Status:  metav1.ConditionFalse,
-			Message: message,
-		},
-		6*time.Minute)
-}
+	blockedCondition := metav1.Condition{
+		Type:    tsparams.ProgressingType,
+		Status:  metav1.ConditionFalse,
+		Message: message,
+	}
 
-// WaitForCguPreCacheValid waits up to the timeout until the provided cguBuilder matches the condition for valid
-// precaching.
-func WaitForCguPreCacheValid(cguBuilder *cgu.CguBuilder, timeout time.Duration) error {
-	return WaitForCguInCondition(
-		cguBuilder,
-		metav1.Condition{
-			Type:    tsparams.PreCacheValidType,
-			Status:  metav1.ConditionTrue,
-			Message: tsparams.PreCacheValidMessage,
-		},
-		timeout)
-}
+	_, err := cguBuilder.WaitForCondition(blockedCondition, 6*time.Minute)
 
-// WaitForCguPreCachePartiallyDone waits up to the timeout until the provided cguBuilder matches the condition for
-// precaching being partially done.
-func WaitForCguPreCachePartiallyDone(cguBuilder *cgu.CguBuilder, timeout time.Duration) error {
-	return WaitForCguInCondition(
-		cguBuilder,
-		metav1.Condition{
-			Type:    tsparams.PreCacheSucceededType,
-			Status:  metav1.ConditionTrue,
-			Message: tsparams.PreCachePartialFailMessage,
-			Reason:  tsparams.PartiallyDoneReason,
-		},
-		timeout)
+	return err
 }
 
 // IsClusterInCguInProgress checks if the current batch remediation progress for the provided cluster is InProgress.

@@ -8,6 +8,7 @@ import (
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
 	"github.com/openshift-kni/k8sreporter"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	policiesv1beta1 "open-cluster-management.io/governance-policy-propagator/api/v1beta1"
@@ -55,4 +56,23 @@ var (
 		"Unable to select clusters: cluster %s is not a ManagedCluster", NonExistentClusterName)
 	// TalmNonExistentPolicyMessage is the condition message for when a policy is non-existent.
 	TalmNonExistentPolicyMessage = fmt.Sprintf("Missing managed policies: [%s]", NonExistentPolicyName)
+
+	CguTimeoutReasonCondition      = metav1.Condition{Type: SucceededType, Reason: TimedOutReason}
+	CguTimeoutMessageCondition     = metav1.Condition{Type: SucceededType, Message: TalmTimeoutMessage}
+	CguTimeoutCanaryCondition      = metav1.Condition{Type: SucceededType, Message: TalmCanaryTimeoutMessage}
+	CguSuccessfulFinishCondition   = metav1.Condition{Type: SucceededType, Reason: CompletedReason}
+	CguSucceededCondition          = metav1.Condition{Type: SucceededType, Status: metav1.ConditionTrue}
+	CguNonExistentClusterCondition = metav1.Condition{Type: ClustersSelectedType, Message: TalmNonExistentClusterMessage}
+	CguNonExistentPolicyCondition  = metav1.Condition{Type: ValidatedType, Message: TalmNonExistentPolicyMessage}
+	CguPreCacheValidCondition      = metav1.Condition{
+		Type:    PreCacheValidType,
+		Status:  metav1.ConditionTrue,
+		Message: PreCacheValidMessage,
+	}
+	CguPreCachePartialCondition = metav1.Condition{
+		Type:    PreCacheSucceededType,
+		Status:  metav1.ConditionTrue,
+		Message: PreCachePartialFailMessage,
+		Reason:  PartiallyDoneReason,
+	}
 )

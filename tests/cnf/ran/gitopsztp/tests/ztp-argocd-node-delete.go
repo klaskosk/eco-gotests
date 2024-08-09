@@ -8,10 +8,11 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/bmh"
 	"github.com/openshift-kni/eco-goinfra/pkg/mco"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/gitdetails"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/helper"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/internal/tsparams"
-	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranhelper"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/version"
 )
 
 var _ = Describe("ZTP Argo CD Node Deletion Tests", Label(tsparams.LabelArgoCdNodeDeletionTestCases), func() {
@@ -23,7 +24,7 @@ var _ = Describe("ZTP Argo CD Node Deletion Tests", Label(tsparams.LabelArgoCdNo
 
 	BeforeEach(func() {
 		By("checking the ZTP version")
-		versionInRange, err := ranhelper.IsVersionStringInRange(RANConfig.ZTPVersion, "4.14", "")
+		versionInRange, err := version.IsVersionStringInRange(RANConfig.ZTPVersion, "4.14", "")
 		Expect(err).ToNot(HaveOccurred(), "Failed to check if ZTP version is in range")
 
 		if !versionInRange {
@@ -59,7 +60,7 @@ var _ = Describe("ZTP Argo CD Node Deletion Tests", Label(tsparams.LabelArgoCdNo
 		}
 
 		By("resetting the clusters app back to the original settings")
-		err := helper.SetGitDetailsInArgoCd(
+		err := gitdetails.SetGitDetailsInArgoCd(
 			tsparams.ArgoCdClustersAppName, tsparams.ArgoCdAppDetails[tsparams.ArgoCdClustersAppName], true, true)
 		Expect(err).ToNot(HaveOccurred(), "Failed to reset clusters app git details")
 
@@ -75,7 +76,7 @@ var _ = Describe("ZTP Argo CD Node Deletion Tests", Label(tsparams.LabelArgoCdNo
 	// 72463 - Delete and re-add a worker node from cluster
 	It("should delete a worker node from the cluster", reportxml.ID("72463"), func() {
 		By("updating the Argo CD git path to apply crAnnotation")
-		exists, err := helper.UpdateArgoCdAppGitPath(
+		exists, err := gitdetails.UpdateArgoCdAppGitPath(
 			tsparams.ArgoCdClustersAppName, tsparams.ZtpTestPathNodeDeleteAddAnnotation, true)
 		if !exists {
 			Skip(err.Error())
@@ -91,7 +92,7 @@ var _ = Describe("ZTP Argo CD Node Deletion Tests", Label(tsparams.LabelArgoCdNo
 		Expect(err).ToNot(HaveOccurred(), "Failed to wait for BMH annotation")
 
 		By("updating the Argo CD app to apply the suppression to the spec")
-		exists, err = helper.UpdateArgoCdAppGitPath(
+		exists, err = gitdetails.UpdateArgoCdAppGitPath(
 			tsparams.ArgoCdClustersAppName, tsparams.ZtpTestPathNodeDeleteAddSuppression, false)
 		if !exists {
 			Skip(err.Error())
