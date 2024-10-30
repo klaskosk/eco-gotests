@@ -56,3 +56,6 @@ test: run-internal-pkg-unit-tests run-system-tests-pkg-unit-tests
 	
 coverage-html: test
 	go tool cover -html cover.out
+
+count-tests:
+	go run ./internal/report
