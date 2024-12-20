@@ -16,6 +16,8 @@ import (
 
 var _ = Describe("Container Namespace Hiding", Label(tsparams.LabelContainerNSHideTestCases), func() {
 	It("should not have kubelet and crio using the same inode as systemd", reportxml.ID("53681"), func() {
+		By("Testing containernshide")
+
 		By("Getting systemd inodes on cluster nodes")
 		systemdInodes, err := cluster.ExecCmdWithStdoutWithRetries(Spoke1APIClient,
 			ranparam.RetryCount, ranparam.RetryInterval, "readlink /proc/1/ns/mnt")
