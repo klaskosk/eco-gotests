@@ -21,6 +21,7 @@ Some test suites (ZTP, TALM) require clusters to be deployed via GitOps ZTP and 
 | [powermanagement](powermanagement/powermanagement_suite_test.go) | Tests powersave settings using workload hints       |
 | [talm](talm/talm_suite_test.go)                                  | Tests the topology aware lifecycle manager (TALM)   |
 | [gitopsztp](gitopsztp/ztp_suite_test.go)                         | Tests zero touch provisioning (ZTP) and Argo CD     |
+| [oran](oran/oran_suite_test.go)                                  | Tests O-RAN deployment                              |
 
 ### Internal pkgs
 
