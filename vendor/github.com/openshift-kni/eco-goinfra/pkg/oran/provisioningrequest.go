@@ -2,6 +2,7 @@ package oran
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/golang/glog"
@@ -10,6 +11,7 @@ import (
 	provisioningv1alpha1 "github.com/openshift-kni/oran-o2ims/api/provisioning/v1alpha1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -79,6 +81,45 @@ func NewPRBuilder(
 		glog.V(100).Info("The template version of the ProvisioningRequest is empty")
 
 		builder.errorMsg = "provisioningRequest 'templateVersion' cannot be empty"
+
+		return builder
+	}
+
+	return builder
+}
+
+// WithTemplateParameter sets key to value in the TemplateParameters field.
+func (builder *ProvisioningRequestBuilder) WithTemplateParameter(key string, value any) *ProvisioningRequestBuilder {
+	if valid, _ := builder.validate(); !valid {
+		return builder
+	}
+
+	glog.V(100).Infof("Setting ProvisioningRequest TemplateParameter %s to %v", key, value)
+
+	if key == "" {
+		glog.V(100).Info("ProvisioningRequest TemplateParameter key is empty")
+
+		builder.errorMsg = "provisioningRequest TemplateParameter 'key' cannot be empty"
+
+		return builder
+	}
+
+	templateParameters, err := builder.unmarshalTemplateParameters()
+	if err != nil {
+		glog.V(100).Infof("Failed to unmarshal ProvisioningRequest TemplateParameters: %v", err)
+
+		builder.errorMsg = fmt.Sprintf("failed to unmarshal TemplateParameters: %v", err)
+
+		return builder
+	}
+
+	templateParameters[key] = value
+	err = builder.marshalTemplateParameters(templateParameters)
+
+	if err != nil {
+		glog.V(100).Infof("Failed to marshal ProvisioningRequest TemplateParameters: %v", err)
+
+		builder.errorMsg = fmt.Sprintf("failed to marshal TemplateParameters: %v", err)
 
 		return builder
 	}
@@ -238,6 +279,40 @@ func (builder *ProvisioningRequestBuilder) Delete() error {
 	}
 
 	builder.Object = nil
+
+	return nil
+}
+
+// unmarshalTemplateParameters unmarshals the raw JSON stored in the TemplateParameters, returning an empty rather than
+// nil map if TemplateParameters is empty.
+func (builder *ProvisioningRequestBuilder) unmarshalTemplateParameters() (map[string]any, error) {
+	templateParameters := make(map[string]any)
+
+	if len(builder.Definition.Spec.TemplateParameters.Raw) == 0 {
+		return templateParameters, nil
+	}
+
+	err := json.Unmarshal(builder.Definition.Spec.TemplateParameters.Raw, &templateParameters)
+	if err != nil {
+		return nil, err
+	}
+
+	return templateParameters, nil
+}
+
+// marshalTemplateParameters marshals the provided map into JSON and stores it in the builder Definition. Nil maps are
+// converted to empty maps before marshaling.
+func (builder *ProvisioningRequestBuilder) marshalTemplateParameters(templateParameters map[string]any) error {
+	if templateParameters == nil {
+		templateParameters = make(map[string]any)
+	}
+
+	marshaled, err := json.Marshal(templateParameters)
+	if err != nil {
+		return err
+	}
+
+	builder.Definition.Spec.TemplateParameters = runtime.RawExtension{Raw: marshaled}
 
 	return nil
 }

@@ -42,4 +42,9 @@ var _ = Describe("ORAN Post-provision Tests", Label(tsparams.LabelPostProvision)
 	It("successfully rolls back failed ProvisioningRequest update", reportxml.ID("77379"), func() {
 
 	})
+
+	// 77391 - Successful update of hardware profile
+	It("successfully updates hardware profile", reportxml.ID("77391"), func() {
+
+	})
 })

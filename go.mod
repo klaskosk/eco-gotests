@@ -233,6 +233,7 @@ require (
 require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/containers/image/v5 v5.31.0
+	github.com/openshift-kni/oran-hwmgr-plugin/api/hwmgr-plugin v0.0.0-20250116121614-e83da6af0d61
 )
 
 require (

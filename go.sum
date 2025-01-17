@@ -569,6 +569,8 @@ github.com/openshift-kni/lifecycle-agent v0.0.0-20250107123650-9dd54f3ea34f h1:K
 github.com/openshift-kni/lifecycle-agent v0.0.0-20250107123650-9dd54f3ea34f/go.mod h1:J1URPIMtSvkp5cZ+4kftgu1KQNZR4BNvyn5xL779PCc=
 github.com/openshift-kni/numaresources-operator v0.4.17-0rc0.0.20240903095616-58342d895734 h1:12QyWN7/6+YszdioTgIDFeJY9nCxSqKGB9P9Pp2huhU=
 github.com/openshift-kni/numaresources-operator v0.4.17-0rc0.0.20240903095616-58342d895734/go.mod h1:3JEkNx0nBloibpk6cxx5NDz3qPRRgJ03fq23plPEkAI=
+github.com/openshift-kni/oran-hwmgr-plugin/api/hwmgr-plugin v0.0.0-20250116121614-e83da6af0d61 h1:Ld8FaLtnJDz8fg5tZ6Y0geMDzCQuAf6G5JELbkHR65w=
+github.com/openshift-kni/oran-hwmgr-plugin/api/hwmgr-plugin v0.0.0-20250116121614-e83da6af0d61/go.mod h1:NHjebhNhQ8W8TKVDD0M1Zbd/sMmRUKVGjolwRjEtVVQ=
 github.com/openshift-kni/oran-o2ims/api/provisioning v0.0.0-20241112205445-5b445634c20c h1:sY1bBoM/6mdukAcS2YMyw2hFc9eveidB+yxOCJroBU0=
 github.com/openshift-kni/oran-o2ims/api/provisioning v0.0.0-20241112205445-5b445634c20c/go.mod h1:u4yCIhhGsut5bXKOoP8jkOYUv8T3hjOb0RCpZR3+VbQ=
 github.com/openshift/api v0.0.0-20240830023148-b7d0481c9094 h1:J1wuGhVxpsHykZBa6Beb1gQ96Ptej9AE/BvwCBiRj1E=
