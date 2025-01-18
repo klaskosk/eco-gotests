@@ -16,27 +16,31 @@ const (
 	ClusterTemplateName = "sno-ran-du"
 	// HardwareManagerNamespace is the namespace that HardwareManagers and their secrets use.
 	HardwareManagerNamespace = "oran-hwmgr-plugin"
+	// ExtraManifestsName is the name of the generated extra manifests ConfigMap in the cluster Namespace.
+	ExtraManifestsName = "sno-ran-du-extra-manifests-1"
 )
 
 const (
+	// TemplateValid is the valid ClusterTemplate used for the provision tests.
+	TemplateValid = "v1"
 	// TemplateNonexistentProfile is the version associated with the nonexistent hardware profile test.
-	TemplateNonexistentProfile = "2"
+	TemplateNonexistentProfile = "v2"
 	// TemplateNoHardware is the version associated with the no hardware available test.
-	TemplateNoHardware = "3"
+	TemplateNoHardware = "v3"
 	// TemplateMissingLabels is the version associated with the missing interface labels test.
-	TemplateMissingLabels = "4"
+	TemplateMissingLabels = "v4"
 	// TemplateIncorrectLabel is the version associated with the incorrect boot interface label test.
-	TemplateIncorrectLabel = "5"
+	TemplateIncorrectLabel = "v5"
 	// TemplateUpdateProfile is the version associated with the hardware profile update test.
-	TemplateUpdateProfile = "6"
+	TemplateUpdateProfile = "v6"
 	// TemplateInvalid is the version associated with the invalid ClusterTemplate test.
-	TemplateInvalid = "7"
+	TemplateInvalid = "v7"
 	// TemplateUpdateDefaults is the version associated with the ClusterInstance defaults update test.
-	TemplateUpdateDefaults = "8"
+	TemplateUpdateDefaults = "v8"
 	// TemplateUpdateExisting is the version associated with the update existing PG manifest test.
-	TemplateUpdateExisting = "9"
+	TemplateUpdateExisting = "v9"
 	// TemplateAddNew is the version associated with the add new manifest to existing PG test.
-	TemplateAddNew = "10"
+	TemplateAddNew = "v10"
 	// TemplateUpdateSchema is the version associated with the policyTemplateParameters schema update test.
-	TemplateUpdateSchema = "11"
+	TemplateUpdateSchema = "v11"
 )

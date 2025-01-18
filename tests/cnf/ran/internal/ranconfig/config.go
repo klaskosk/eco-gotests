@@ -53,8 +53,9 @@ type HubConfig struct {
 type Spoke1Config struct {
 	Spoke1BMC        *bmc.BMC
 	Spoke1APIClient  *clients.Settings
-	Spoke1Name       string
 	Spoke1OCPVersion string
+	Spoke1Name       string        `envconfig:"ECO_CNF_RAN_SPOKE1_NAME"`
+	Spoke1Hostname   string        `envconfig:"ECO_CNF_RAN_SPOKE1_HOSTNAME"`
 	BMCUsername      string        `envconfig:"ECO_CNF_RAN_BMC_USERNAME"`
 	BMCPassword      string        `envconfig:"ECO_CNF_RAN_BMC_PASSWORD"`
 	BMCHosts         []string      `envconfig:"ECO_CNF_RAN_BMC_HOSTS"`

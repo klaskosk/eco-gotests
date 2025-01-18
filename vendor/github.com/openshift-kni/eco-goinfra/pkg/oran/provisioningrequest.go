@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
@@ -12,6 +14,7 @@ import (
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -281,6 +284,88 @@ func (builder *ProvisioningRequestBuilder) Delete() error {
 	builder.Object = nil
 
 	return nil
+}
+
+// DeleteAndWait deletes the ProvisioningRequest then waits up to timeout until the ProvisioningRequest no longer
+// exists.
+func (builder *ProvisioningRequestBuilder) DeleteAndWait(timeout time.Duration) error {
+	if valid, err := builder.validate(); !valid {
+		return err
+	}
+
+	glog.V(100).Infof("Deleting ProvisioningRequest %s and waiting up to %s until it is deleted",
+		builder.Definition.Name, timeout)
+
+	err := builder.Delete()
+	if err != nil {
+		return err
+	}
+
+	return wait.PollUntilContextTimeout(
+		context.TODO(), 3*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+			return !builder.Exists(), nil
+		})
+}
+
+// WaitForCondition waits up to the provided timeout for a condition matching expected. It checks only the Type, Status,
+// Reason, and Message fields. For the message, it matches if the message contains the expected. Zero fields in the
+// expected condition are ignored.
+func (builder *ProvisioningRequestBuilder) WaitForCondition(
+	expected metav1.Condition, timeout time.Duration) (*ProvisioningRequestBuilder, error) {
+	if valid, err := builder.validate(); !valid {
+		return nil, err
+	}
+
+	glog.V(100).Infof("Waiting up to %s until ProvisioningRequest %s has condition %v",
+		timeout, builder.Definition.Name, expected)
+
+	if !builder.Exists() {
+		glog.V(100).Infof("ProvisioningRequest %s does not exist", builder.Definition.Name)
+
+		return nil, fmt.Errorf("cannot wait for non-existent ProvisioningRequest")
+	}
+
+	err := wait.PollUntilContextTimeout(
+		context.TODO(), 3*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+			var err error
+			builder.Object, err = builder.Get()
+
+			if err != nil {
+				glog.V(100).Infof("Failed to get ProvisioningRequest %s: %v", builder.Definition.Name, err)
+
+				return false, nil
+			}
+
+			builder.Definition = builder.Object
+
+			for _, condition := range builder.Object.Status.Conditions {
+				if expected.Type != "" && condition.Type != expected.Type {
+					continue
+				}
+
+				if expected.Status != "" && condition.Status != expected.Status {
+					continue
+				}
+
+				if expected.Reason != "" && condition.Reason != expected.Reason {
+					continue
+				}
+
+				if expected.Message != "" && !strings.Contains(condition.Message, expected.Message) {
+					continue
+				}
+
+				return true, nil
+			}
+
+			return false, nil
+		})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return builder, nil
 }
 
 // unmarshalTemplateParameters unmarshals the raw JSON stored in the TemplateParameters, returning an empty rather than
