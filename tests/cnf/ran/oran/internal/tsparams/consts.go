@@ -1,5 +1,7 @@
 package tsparams
 
+import "github.com/golang/glog"
+
 const (
 	// LabelSuite is the label applied to all cases in the oran suite.
 	LabelSuite = "oran"
@@ -18,6 +20,14 @@ const (
 	HardwareManagerNamespace = "oran-hwmgr-plugin"
 	// ExtraManifestsName is the name of the generated extra manifests ConfigMap in the cluster Namespace.
 	ExtraManifestsName = "sno-ran-du-extra-manifests-1"
+	// ClusterInstanceParamsKey is the key in the TemplateParameters map for the ClusterInstance parameters.
+	ClusterInstanceParamsKey = "clusterInstanceParameters"
+	// PolicyTemplateParamsKey is the key in the TemplateParameters map for the policy template parameters.
+	PolicyTemplateParamsKey = "policyTemplateParameters"
+	// HugePagesSizeKey is the key in TemplateParameters.policyTemplateParameters that sets the hugepages size.
+	HugePagesSizeKey = "hugepages-size"
+	// ImmutableMessage is the message to expect in a Policy's history when an immutable field cannot be updated.
+	ImmutableMessage = "cannot be updated, likely due to immutable fields not matching"
 )
 
 const (
@@ -44,3 +54,20 @@ const (
 	// TemplateUpdateSchema is the version associated with the policyTemplateParameters schema update test.
 	TemplateUpdateSchema = "v11"
 )
+
+const (
+	// TestName is the name to use for various test items, such as labels, annotations, and the test ConfigMap in
+	// post-provision tests. This constant consolidates all these names so there is only one rather than a separate
+	// TestLabel, TestAnnotation, etc. constants that are all the same.
+	TestName = "oran-test"
+	// TestName2 is the secondary test name to use for various test items, for example, the second test ConfigMap
+	// for test cases that use it in the post-provision tests.
+	TestName2 = "oran-test-2"
+	// TestOriginalValue is the original value to expect when checking the test ConfigMap.
+	TestOriginalValue = "original-value"
+	// TestNewValue is the new value to set in the test ConfigMap.
+	TestNewValue = "new-value"
+)
+
+// LogLevel is the glog verbosity level to use for logs in this suite or its helpers.
+const LogLevel glog.Level = 80

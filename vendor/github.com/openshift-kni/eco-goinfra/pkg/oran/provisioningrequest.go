@@ -107,7 +107,7 @@ func (builder *ProvisioningRequestBuilder) WithTemplateParameter(key string, val
 		return builder
 	}
 
-	templateParameters, err := builder.unmarshalTemplateParameters()
+	templateParameters, err := builder.GetTemplateParameters()
 	if err != nil {
 		glog.V(100).Infof("Failed to unmarshal ProvisioningRequest TemplateParameters: %v", err)
 
@@ -117,7 +117,7 @@ func (builder *ProvisioningRequestBuilder) WithTemplateParameter(key string, val
 	}
 
 	templateParameters[key] = value
-	err = builder.marshalTemplateParameters(templateParameters)
+	err = builder.WithTemplateParameters(templateParameters)
 
 	if err != nil {
 		glog.V(100).Infof("Failed to marshal ProvisioningRequest TemplateParameters: %v", err)
@@ -128,6 +128,52 @@ func (builder *ProvisioningRequestBuilder) WithTemplateParameter(key string, val
 	}
 
 	return builder
+}
+
+// GetTemplateParameters unmarshals the raw JSON stored in the TemplateParameters in the Definition, returning an empty
+// rather than nil map if TemplateParameters is empty.
+func (builder *ProvisioningRequestBuilder) GetTemplateParameters() (map[string]any, error) {
+	if valid, err := builder.validate(); !valid {
+		return nil, err
+	}
+
+	glog.V(100).Infof("Getting the TemplateParameters map for ProvisioningRequest %s", builder.Definition.Name)
+
+	templateParameters := make(map[string]any)
+
+	if len(builder.Definition.Spec.TemplateParameters.Raw) == 0 {
+		return templateParameters, nil
+	}
+
+	err := json.Unmarshal(builder.Definition.Spec.TemplateParameters.Raw, &templateParameters)
+	if err != nil {
+		return nil, err
+	}
+
+	return templateParameters, nil
+}
+
+// WithTemplateParameters marshals the provided map into JSON and stores it in the builder Definition. Nil maps are
+// converted to empty maps before marshaling.
+func (builder *ProvisioningRequestBuilder) WithTemplateParameters(templateParameters map[string]any) error {
+	if valid, err := builder.validate(); !valid {
+		return err
+	}
+
+	glog.V(100).Infof("Setting the TemplateParameters map for ProvisioningRequest %s", builder.Definition.Name)
+
+	if templateParameters == nil {
+		templateParameters = make(map[string]any)
+	}
+
+	marshaled, err := json.Marshal(templateParameters)
+	if err != nil {
+		return err
+	}
+
+	builder.Definition.Spec.TemplateParameters = runtime.RawExtension{Raw: marshaled}
+
+	return nil
 }
 
 // PullPR pulls an existing ProvisioningRequest into a Builder struct.
@@ -366,40 +412,6 @@ func (builder *ProvisioningRequestBuilder) WaitForCondition(
 	}
 
 	return builder, nil
-}
-
-// unmarshalTemplateParameters unmarshals the raw JSON stored in the TemplateParameters, returning an empty rather than
-// nil map if TemplateParameters is empty.
-func (builder *ProvisioningRequestBuilder) unmarshalTemplateParameters() (map[string]any, error) {
-	templateParameters := make(map[string]any)
-
-	if len(builder.Definition.Spec.TemplateParameters.Raw) == 0 {
-		return templateParameters, nil
-	}
-
-	err := json.Unmarshal(builder.Definition.Spec.TemplateParameters.Raw, &templateParameters)
-	if err != nil {
-		return nil, err
-	}
-
-	return templateParameters, nil
-}
-
-// marshalTemplateParameters marshals the provided map into JSON and stores it in the builder Definition. Nil maps are
-// converted to empty maps before marshaling.
-func (builder *ProvisioningRequestBuilder) marshalTemplateParameters(templateParameters map[string]any) error {
-	if templateParameters == nil {
-		templateParameters = make(map[string]any)
-	}
-
-	marshaled, err := json.Marshal(templateParameters)
-	if err != nil {
-		return err
-	}
-
-	builder.Definition.Spec.TemplateParameters = runtime.RawExtension{Raw: marshaled}
-
-	return nil
 }
 
 // validate checks that the builder, definition, and apiClient are properly initialized and there is no errorMsg.

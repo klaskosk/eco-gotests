@@ -1,13 +1,22 @@
 package helper
 
 import (
+	"context"
 	"fmt"
+	"strings"
+	"time"
 
+	"github.com/golang/glog"
+	"github.com/openshift-kni/eco-goinfra/pkg/bmc"
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
+	"github.com/openshift-kni/eco-goinfra/pkg/ocm"
 	"github.com/openshift-kni/eco-goinfra/pkg/oran"
+	"github.com/openshift-kni/eco-goinfra/pkg/siteconfig"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/oran/internal/tsparams"
 	pluginv1alpha1 "github.com/openshift-kni/oran-hwmgr-plugin/api/hwmgr-plugin/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -51,4 +60,141 @@ func GetValidDellHwmgr(client *clients.Settings) (*oran.HardwareManagerBuilder, 
 	}
 
 	return nil, fmt.Errorf("no valid HardwareManager with AdaptorID dell-hwmgr exists")
+}
+
+// WaitForCIExtraLabel waits up to timeout until clusterInstance contains the label. This will update the Object but not
+// the Definition of the CIBuilder.
+func WaitForCIExtraLabel(clusterInstance *siteconfig.CIBuilder, label string, timeout time.Duration) error {
+	return wait.PollUntilContextTimeout(
+		context.TODO(), 3*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+			var err error
+			clusterInstance.Object, err = clusterInstance.Get()
+
+			if err != nil {
+				glog.V(tsparams.LogLevel).Infof("Failed to get ClusterInstance %s in namespace %s: %v",
+					clusterInstance.Definition.Name, clusterInstance.Definition.Namespace)
+
+				return false, nil
+			}
+
+			mclLabels, ok := clusterInstance.Object.Spec.ExtraLabels["ManagedCluster"]
+			if !ok {
+				glog.V(tsparams.LogLevel).Infof("ClusterInstance %s in namespace %s is missing ManagedCluster extraLabels",
+					clusterInstance.Definition.Name, clusterInstance.Definition.Namespace)
+
+				return false, nil
+			}
+
+			_, containsLabel := mclLabels[label]
+
+			return containsLabel, nil
+		})
+}
+
+// WaitForMCLLabel waits up to timeout until mcl contains the label. This will update the Object but not the Definition
+// of the ManagedClusterBuilder.
+func WaitForMCLLabel(mcl *ocm.ManagedClusterBuilder, label string, timeout time.Duration) error {
+	return wait.PollUntilContextTimeout(
+		context.TODO(), 3*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+			if !mcl.Exists() {
+				glog.V(tsparams.LogLevel).Infof("ManagedCluster %s does not exist", mcl.Definition.Name)
+
+				return false, nil
+			}
+
+			if mcl.Object == nil {
+				glog.V(tsparams.LogLevel).Infof("Failed to get ManagedCluster %s", mcl.Definition.Name)
+
+				return false, nil
+			}
+
+			_, containsLabel := mcl.Object.Labels[label]
+
+			return containsLabel, nil
+		})
+}
+
+// WaitForPoliciesCompliant waits up to the timeout until all of the policies in namespace are Compliant.
+func WaitForPoliciesCompliant(client *clients.Settings, namespace string, timeout time.Duration) error {
+	return wait.PollUntilContextTimeout(
+		context.TODO(), 3*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+			policies, err := ocm.ListPoliciesInAllNamespaces(client, runtimeclient.ListOptions{Namespace: namespace})
+			if err != nil {
+				glog.V(tsparams.LogLevel).Infof("Failed to list all policies in namespace %s: %v", namespace, err)
+
+				return false, nil
+			}
+
+			for _, policy := range policies {
+				if policy.Definition.Status.ComplianceState != policiesv1.Compliant {
+					glog.V(tsparams.LogLevel).Infof("Policy %s in namespace %s is not compliant",
+						policy.Definition.Name, policy.Definition.Namespace)
+
+					return false, nil
+				}
+			}
+
+			return true, nil
+		})
+}
+
+// WaitForNoncompliantImmutable waits up to timeout until one of the policies in namespace is NonCompliant and the
+// message history shows it is due to an immutable field.
+func WaitForNoncompliantImmutable(client *clients.Settings, namespace string, timeout time.Duration) error {
+	return wait.PollUntilContextTimeout(
+		context.TODO(), 3*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+			policies, err := ocm.ListPoliciesInAllNamespaces(client, runtimeclient.ListOptions{Namespace: namespace})
+			if err != nil {
+				glog.V(tsparams.LogLevel).Infof("Failed to list all policies in namespace %s: %v", namespace, err)
+
+				return false, nil
+			}
+
+			for _, policy := range policies {
+				if policy.Definition.Status.ComplianceState == policiesv1.NonCompliant {
+					glog.V(tsparams.LogLevel).Infof("Policy %s in namespace %s is not compliant, checking history",
+						policy.Definition.Name, policy.Definition.Namespace)
+
+					details := policy.Definition.Status.Details
+					if len(details) != 1 {
+						continue
+					}
+
+					history := details[0].History
+					if len(history) < 1 {
+						continue
+					}
+
+					if strings.Contains(history[0].Message, tsparams.ImmutableMessage) {
+						glog.V(tsparams.LogLevel).Infof("Policy %s in namespace %s is not compliant due to an immutable field",
+							policy.Definition.Name, policy.Definition.Namespace)
+
+						return true, nil
+					}
+				}
+			}
+
+			return false, nil
+		})
+}
+
+// WaitForPoweredOff waits up to timeout until the provided BMC shows the system is powered off.
+func WaitForPoweredOff(bmcClient *bmc.BMC, timeout time.Duration) error {
+	return wait.PollUntilContextTimeout(
+		context.TODO(), 3*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+			powerState, err := bmcClient.SystemPowerState()
+			if err != nil {
+				glog.V(tsparams.LogLevel).Infof("Failed to get system power state: %v", err)
+
+				return false, err
+			}
+
+			if powerState != "Off" {
+				glog.V(tsparams.LogLevel).Infof("System power state is not Off: %s", powerState)
+
+				return false, nil
+			}
+
+			return true, nil
+		})
 }
