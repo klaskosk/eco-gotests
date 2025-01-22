@@ -33,26 +33,30 @@ const (
 const (
 	// TemplateValid is the valid ClusterTemplate used for the provision tests.
 	TemplateValid = "v1"
-	// TemplateNonexistentProfile is the version associated with the nonexistent hardware profile test.
+	// TemplateNonexistentProfile is the ClusterTemplate version for the nonexistent hardware profile test.
 	TemplateNonexistentProfile = "v2"
-	// TemplateNoHardware is the version associated with the no hardware available test.
+	// TemplateNoHardware is the ClusterTemplate version for the no hardware available test.
 	TemplateNoHardware = "v3"
-	// TemplateMissingLabels is the version associated with the missing interface labels test.
+	// TemplateMissingLabels is the ClusterTemplate version for the missing interface labels test.
 	TemplateMissingLabels = "v4"
-	// TemplateIncorrectLabel is the version associated with the incorrect boot interface label test.
+	// TemplateIncorrectLabel is the ClusterTemplate version for the incorrect boot interface label test.
 	TemplateIncorrectLabel = "v5"
-	// TemplateUpdateProfile is the version associated with the hardware profile update test.
+	// TemplateUpdateProfile is the ClusterTemplate version for the hardware profile update test.
 	TemplateUpdateProfile = "v6"
-	// TemplateInvalid is the version associated with the invalid ClusterTemplate test.
+	// TemplateInvalid is the ClusterTemplate version for the invalid ClusterTemplate test.
 	TemplateInvalid = "v7"
-	// TemplateUpdateDefaults is the version associated with the ClusterInstance defaults update test.
+	// TemplateUpdateDefaults is the ClusterTemplate version for the ClusterInstance defaults update test.
 	TemplateUpdateDefaults = "v8"
-	// TemplateUpdateExisting is the version associated with the update existing PG manifest test.
+	// TemplateUpdateExisting is the ClusterTemplate version for the update existing PG manifest test.
 	TemplateUpdateExisting = "v9"
-	// TemplateAddNew is the version associated with the add new manifest to existing PG test.
+	// TemplateAddNew is the ClusterTemplate version for the add new manifest to existing PG test.
 	TemplateAddNew = "v10"
-	// TemplateUpdateSchema is the version associated with the policyTemplateParameters schema update test.
+	// TemplateUpdateSchema is the ClusterTemplate version for the policyTemplateParameters schema update test.
 	TemplateUpdateSchema = "v11"
+	// TemplateMissingSchema is the ClusterTemplate version for the missing schema without HardwareTemplate test.
+	TemplateMissingSchema = "v12"
+	// TemplateNoHWTemplate is the ClusterTemplate version for the successful no HardwareTemplate test.
+	TemplateNoHWTemplate = "v13"
 )
 
 const (

@@ -140,8 +140,8 @@ var _ = Describe("ORAN Post-provision Tests", Label(tsparams.LabelPostProvision)
 		By("verifying the test ConfigMap has the original value")
 		verifyCM(tsparams.TestName, tsparams.TestOriginalValue)
 
-		By("verifying the second test ConfigMap has the new value")
-		verifyCM(tsparams.TestName2, tsparams.TestNewValue)
+		By("verifying the second test ConfigMap exists and has the original value")
+		verifyCM(tsparams.TestName2, tsparams.TestOriginalValue)
 	})
 
 	// 77378 - Successful update of ClusterTemplate policyTemplateParameters schema

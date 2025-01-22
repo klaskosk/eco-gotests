@@ -38,6 +38,36 @@ func NewProvisioningRequest(
 	return prBuilder
 }
 
+// NewNoTemplatePR creates a ProvisioningRequest builder using the provided values, following the schema for no
+// HardwareTemplate. The BMC and network data is incorrect so that a ClusterInstance is generated but will not actually
+// provision.
+func NewNoTemplatePR(
+	client *clients.Settings, clusterName, hostName, templateVersion string) *oran.ProvisioningRequestBuilder {
+	prBuilder := oran.NewPRBuilder(client, clusterName, tsparams.ClusterTemplateName, templateVersion).
+		WithTemplateParameter("nodeClusterName", clusterName).
+		WithTemplateParameter("oCloudSiteId", clusterName).
+		WithTemplateParameter("policyTemplateParameters", map[string]any{}).
+		WithTemplateParameter("clusterInstanceParameters", map[string]any{
+			"clusterName": clusterName,
+			"nodes": []map[string]any{{
+				"hostName":   hostName,
+				"bmcAddress": "redfish-VirtualMedia://10.10.10.10/redfish/v1/Systems/System.Embedded.1",
+				"bmcCredentialsDetails": map[string]any{
+					"username": "invalid",
+					"password": "invalid",
+				},
+				"bootMACAddress": "01:23:45:67:89:AB",
+				"nodeNetwork": map[string]any{
+					"interfaces": []map[string]any{{
+						"macAddress": "01:23:45:67:89:AB",
+					}},
+				},
+			}},
+		})
+
+	return prBuilder
+}
+
 // GetValidDellHwmgr returns the first HardwareManager with AdaptorID dell-hwmgr and where condition Validation is True.
 func GetValidDellHwmgr(client *clients.Settings) (*oran.HardwareManagerBuilder, error) {
 	hwmgrs, err := oran.ListHardwareManagers(client, runtimeclient.ListOptions{

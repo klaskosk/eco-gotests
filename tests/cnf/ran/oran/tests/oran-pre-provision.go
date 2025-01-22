@@ -84,8 +84,27 @@ var _ = Describe("ORAN Pre-provision Tests", Label(tsparams.LabelPreProvision), 
 			// 77392 - Apply a ProvisioningRequest referencing an invalid ClusterTemplate
 			Entry("fails to provision with invalid ClusterTemplate",
 				reportxml.ID("77392"), tsparams.TemplateInvalid, tsparams.PRValidationFailedCondition),
+			// 78245 - Missing schema while provisioning without hardware template
+			Entry("fails to provision without a HardwareTemplate when required schema is missing",
+				reportxml.ID("78245"), tsparams.TemplateMissingSchema, tsparams.PRValidationFailedCondition),
 		)
+
+		// 78246 - Successful provisioning without hardware template
+		It("successfully generates ClusterInstance provisioning without HardwareTemplate", reportxml.ID("78246"), func() {
+			By("creating a ProvisioningRequest")
+			prBuilder = helper.NewNoTemplatePR(
+				HubAPIClient, RANConfig.Spoke1Name, RANConfig.Spoke1Hostname, tsparams.TemplateNoHWTemplate)
+
+			var err error
+			prBuilder, err = prBuilder.Create()
+			Expect(err).ToNot(HaveOccurred(), "Failed to create a ProvisioningRequest")
+
+			By("waiting for its ClusterInstance to be processed")
+			prBuilder, err = prBuilder.WaitForCondition(tsparams.PRCIProcesssedCondition, time.Minute)
+			Expect(err).ToNot(HaveOccurred(), "Failed to wait for ClusterInstance to be processed")
+		})
 	})
+
 })
 
 func createPR(templateVersion string) *oran.ProvisioningRequestBuilder {

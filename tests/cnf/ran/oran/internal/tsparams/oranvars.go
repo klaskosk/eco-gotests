@@ -68,4 +68,11 @@ var (
 		Reason: string(provisioningv1alpha1.CRconditionReasons.Completed),
 		Status: metav1.ConditionTrue,
 	}
+	// PRCIProcesssedCondition is the ProvisioningRequest condition where the ClusterInstance has successfully been
+	// processed.
+	PRCIProcesssedCondition = metav1.Condition{
+		Type:   string(provisioningv1alpha1.PRconditionTypes.ClusterInstanceProcessed),
+		Reason: string(provisioningv1alpha1.CRconditionReasons.Completed),
+		Status: metav1.ConditionTrue,
+	}
 )
