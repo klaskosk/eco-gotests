@@ -3,6 +3,8 @@ package oran
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
@@ -10,6 +12,7 @@ import (
 	provisioningv1alpha1 "github.com/openshift-kni/oran-o2ims/api/provisioning/v1alpha1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -113,6 +116,69 @@ func (builder *ClusterTemplateBuilder) Exists() bool {
 	builder.Object, err = builder.Get()
 
 	return err == nil || !k8serrors.IsNotFound(err)
+}
+
+// WaitForCondition waits up to the provided timeout for a condition matching expected. It checks only the Type, Status,
+// Reason, and Message fields. For the message, it matches if the message contains the expected. Zero fields in the
+// expected condition are ignored.
+func (builder *ClusterTemplateBuilder) WaitForCondition(
+	expected metav1.Condition, timeout time.Duration) (*ClusterTemplateBuilder, error) {
+	if valid, err := builder.validate(); !valid {
+		return nil, err
+	}
+
+	glog.V(100).Infof("Waiting up to %s until ClusterTemplate %s in namespaces %s has condition %v",
+		timeout, builder.Definition.Name, builder.Definition.Namespace, expected)
+
+	if !builder.Exists() {
+		glog.V(100).Infof("ClusterTemplate %s does not exist in namespace %s",
+			builder.Definition.Name, builder.Definition.Namespace)
+
+		return nil, fmt.Errorf("cannot wait for non-existent ClusterTemplate")
+	}
+
+	err := wait.PollUntilContextTimeout(
+		context.TODO(), 3*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+			var err error
+			builder.Object, err = builder.Get()
+
+			if err != nil {
+				glog.V(100).Infof("Failed to get ClusterTemplate %s in namespaces %s: %v",
+					builder.Definition.Name, builder.Definition.Namespace, err)
+
+				return false, nil
+			}
+
+			builder.Definition = builder.Object
+
+			for _, condition := range builder.Object.Status.Conditions {
+				if expected.Type != "" && condition.Type != expected.Type {
+					continue
+				}
+
+				if expected.Status != "" && condition.Status != expected.Status {
+					continue
+				}
+
+				if expected.Reason != "" && condition.Reason != expected.Reason {
+					continue
+				}
+
+				if expected.Message != "" && !strings.Contains(condition.Message, expected.Message) {
+					continue
+				}
+
+				return true, nil
+			}
+
+			return false, nil
+		})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return builder, nil
 }
 
 // validate checks that the builder, definition, and apiClient are properly initialized and there is no errorMsg.

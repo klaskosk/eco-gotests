@@ -1,11 +1,15 @@
 package tsparams
 
 import (
+	siteconfigv1alpha1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/siteconfig/v1alpha1"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
 	"github.com/openshift-kni/k8sreporter"
 	pluginv1alpha1 "github.com/openshift-kni/oran-hwmgr-plugin/api/hwmgr-plugin/v1alpha1"
 	provisioningv1alpha1 "github.com/openshift-kni/oran-o2ims/api/provisioning/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
 
 var (
@@ -13,16 +17,29 @@ var (
 	Labels = append(ranparam.Labels, LabelSuite)
 
 	// ReporterHubNamespacesToDump tells the reporter which namespaces on the hub to collect pod logs from.
-	ReporterHubNamespacesToDump = map[string]string{}
+	ReporterHubNamespacesToDump = map[string]string{
+		TestName:       "",
+		O2IMSNamespace: "",
+	}
 
 	// ReporterSpokeNamespacesToDump tells the reporter which namespaces on the spoke to collect pod logs from.
-	ReporterSpokeNamespacesToDump = map[string]string{}
+	ReporterSpokeNamespacesToDump = map[string]string{
+		TestName: "",
+	}
 
 	// ReporterHubCRsToDump is the CRs the reporter should dump on the hub.
-	ReporterHubCRsToDump = []k8sreporter.CRData{}
+	ReporterHubCRsToDump = []k8sreporter.CRData{
+		{Cr: &pluginv1alpha1.HardwareManagerList{}, Namespace: ptr.To(HardwareManagerNamespace)},
+		{Cr: &provisioningv1alpha1.ProvisioningRequestList{}},
+		{Cr: &policiesv1.PolicyList{}},
+		{Cr: &siteconfigv1alpha1.ClusterInstanceList{}},
+	}
 
 	// ReporterSpokeCRsToDump is the CRs the reporter should dump on the spoke.
-	ReporterSpokeCRsToDump = []k8sreporter.CRData{}
+	ReporterSpokeCRsToDump = []k8sreporter.CRData{
+		{Cr: &corev1.ConfigMapList{}, Namespace: ptr.To(TestName)},
+		{Cr: &policiesv1.PolicyList{}},
+	}
 )
 
 var (
@@ -74,5 +91,12 @@ var (
 		Type:   string(provisioningv1alpha1.PRconditionTypes.ClusterInstanceProcessed),
 		Reason: string(provisioningv1alpha1.CRconditionReasons.Completed),
 		Status: metav1.ConditionTrue,
+	}
+
+	// CTValidationFailedCondition is the ClusterTemplate condition where the validation failed.
+	CTValidationFailedCondition = metav1.Condition{
+		Type:   string(provisioningv1alpha1.CTconditionTypes.Validated),
+		Reason: string(provisioningv1alpha1.CTconditionReasons.Failed),
+		Status: metav1.ConditionFalse,
 	}
 )

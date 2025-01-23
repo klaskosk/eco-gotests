@@ -72,7 +72,7 @@ func IsVersionStringInRange(version, minimum, maximum string) (bool, error) {
 // version if the latest version could not be found.
 func GetOCPVersion(client *clients.Settings) (string, error) {
 	clusterVersion, err := cluster.GetOCPClusterVersion(client)
-	if err != nil {
+	if err != nil || clusterVersion.Object == nil {
 		return "", err
 	}
 

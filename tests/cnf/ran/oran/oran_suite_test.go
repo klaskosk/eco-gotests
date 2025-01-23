@@ -10,10 +10,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
-	_ "github.com/openshift-kni/eco-gotests/tests/cnf/ran/gitopsztp/tests"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/rancluster"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/oran/internal/tsparams"
+	_ "github.com/openshift-kni/eco-gotests/tests/cnf/ran/oran/tests"
 	"github.com/openshift-kni/eco-gotests/tests/internal/reporter"
 )
 

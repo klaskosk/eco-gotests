@@ -24,7 +24,7 @@ import (
 // templateParameters automatically.
 func NewProvisioningRequest(
 	client *clients.Settings, clusterName, hostName, templateVersion string) *oran.ProvisioningRequestBuilder {
-	prBuilder := oran.NewPRBuilder(client, clusterName, tsparams.ClusterTemplateName, templateVersion).
+	prBuilder := oran.NewPRBuilder(client, tsparams.TestPRName, tsparams.ClusterTemplateName, templateVersion).
 		WithTemplateParameter("nodeClusterName", clusterName).
 		WithTemplateParameter("oCloudSiteId", clusterName).
 		WithTemplateParameter("policyTemplateParameters", map[string]any{}).
@@ -43,7 +43,7 @@ func NewProvisioningRequest(
 // provision.
 func NewNoTemplatePR(
 	client *clients.Settings, clusterName, hostName, templateVersion string) *oran.ProvisioningRequestBuilder {
-	prBuilder := oran.NewPRBuilder(client, clusterName, tsparams.ClusterTemplateName, templateVersion).
+	prBuilder := oran.NewPRBuilder(client, tsparams.TestPRName, tsparams.ClusterTemplateName, templateVersion).
 		WithTemplateParameter("nodeClusterName", clusterName).
 		WithTemplateParameter("oCloudSiteId", clusterName).
 		WithTemplateParameter("policyTemplateParameters", map[string]any{}).
@@ -53,8 +53,8 @@ func NewNoTemplatePR(
 				"hostName":   hostName,
 				"bmcAddress": "redfish-VirtualMedia://10.10.10.10/redfish/v1/Systems/System.Embedded.1",
 				"bmcCredentialsDetails": map[string]any{
-					"username": "invalid",
-					"password": "invalid",
+					"username": tsparams.TestBase64Credential,
+					"password": tsparams.TestBase64Credential,
 				},
 				"bootMACAddress": "01:23:45:67:89:AB",
 				"nodeNetwork": map[string]any{

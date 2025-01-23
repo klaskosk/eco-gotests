@@ -14,9 +14,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Some test cases are marked as pending from the code. This is used for tests that cannot be used with the loopback
+// adaptor and are guaranteed to fail until the production-ready DTIAS is available.
+
 var _ = Describe("ORAN Pre-provision Tests", Label(tsparams.LabelPreProvision), func() {
 	// 77386 - Failed authentication with hardware manager
-	It("fails to authenticate with hardware manager", reportxml.ID("77386"), func() {
+	PIt("fails to authenticate with hardware manager", reportxml.ID("77386"), func() {
 		By("getting a valid Dell HardwareManager")
 		hwmgr, err := helper.GetValidDellHwmgr(HubAPIClient)
 		Expect(err).ToNot(HaveOccurred(), "Failed to get a valid Dell HardwareManager")
@@ -29,7 +32,7 @@ var _ = Describe("ORAN Pre-provision Tests", Label(tsparams.LabelPreProvision), 
 
 		By("copying the secret and updating the password")
 		authSecret.Definition.Name += "-test"
-		authSecret.Definition.Data["password"] = []byte("d3JvbmdwYXNzd29yZA==") // wrongpassword
+		authSecret.Definition.Data["password"] = []byte(tsparams.TestBase64Credential) // wrongpassword
 
 		authSecret, err = authSecret.Create()
 		Expect(err).ToNot(HaveOccurred(), "Failed to create the new AuthSecret")
@@ -54,12 +57,42 @@ var _ = Describe("ORAN Pre-provision Tests", Label(tsparams.LabelPreProvision), 
 		Expect(err).ToNot(HaveOccurred(), "Failed to delete the invalid AuthSecret")
 	})
 
-	When("a ProvisioningRequest is applied", func() {
+	// 77392 - Apply a ProvisioningRequest referencing an invalid ClusterTemplate
+	It("fails to create ProvisioningRequest with invalid ClusterTemplate", reportxml.ID("77392"), func() {
+		By("attempting to create a ProvisioningRequest")
+		prBuilder := helper.NewProvisioningRequest(
+			HubAPIClient, RANConfig.Spoke1Name, RANConfig.Spoke1Hostname, tsparams.TemplateInvalid)
+		prBuilder, err := prBuilder.Create()
+		Expect(err).To(HaveOccurred(), "Creating a ProvisioningRequest with an invalid ClusterTemplate should fail")
+	})
+
+	DescribeTable("ClusterTemplate failed validations",
+		func(templateVersion, message string) {
+			By("verifying the ClusterTemplate validation failed")
+			clusterTemplate, err := oran.PullClusterTemplate(
+				HubAPIClient, tsparams.ClusterTemplateName+"."+templateVersion, tsparams.ClusterTemplateName)
+			Expect(err).ToNot(HaveOccurred(), "Failed to pull ClusterTemplate with version %s", templateVersion)
+
+			condition := tsparams.CTValidationFailedCondition
+			condition.Message = message
+
+			_, err = clusterTemplate.WaitForCondition(condition, time.Minute)
+			Expect(err).ToNot(HaveOccurred(), "Failed to verify the ClusterTemplate validation failed with message %s", message)
+		},
+		// 77389 - Failed provisioning with missing interface labels
+		Entry("fails to provision with missing interface labels",
+			reportxml.ID("77389"), tsparams.TemplateMissingLabels, tsparams.CTMissingLabelMessage),
+		// 78245 - Missing schema while provisioning without hardware template
+		Entry("fails to provision without a HardwareTemplate when required schema is missing",
+			reportxml.ID("78245"), tsparams.TemplateMissingSchema, tsparams.CTMissingSchemaMessage),
+	)
+
+	When("a ProvisioningRequest is created", func() {
 		var prBuilder *oran.ProvisioningRequestBuilder
 
 		AfterEach(func() {
 			if prBuilder != nil {
-				err := prBuilder.DeleteAndWait(time.Minute)
+				err := prBuilder.DeleteAndWait(10 * time.Minute)
 				Expect(err).ToNot(HaveOccurred(), "Failed to delete the ProvisioningRequest")
 			}
 		})
@@ -70,23 +103,14 @@ var _ = Describe("ORAN Pre-provision Tests", Label(tsparams.LabelPreProvision), 
 				prBuilder = checkPRStatus(prBuilder, condition)
 			},
 			// 77387 - Failed provisioning with nonexistent hardware profile
-			Entry("fails to provision with nonexistent hardware profile",
+			PEntry("fails to provision with nonexistent hardware profile",
 				reportxml.ID("77387"), tsparams.TemplateNonexistentProfile, tsparams.PRHardwareProvisionFailedCondition),
 			// 77388 - Failed provisioning with no hardware available
 			Entry("fails to provision with no hardware available",
 				reportxml.ID("77388"), tsparams.TemplateNoHardware, tsparams.PRHardwareProvisionFailedCondition),
-			// 77389 - Failed provisioning with missing interface labels
-			Entry("fails to provision with missing interface labels",
-				reportxml.ID("77389"), tsparams.TemplateMissingLabels, tsparams.PRValidationFailedCondition),
 			// 77390 - Failed provisioning with incorrect boot interface label
 			Entry("fails to provision with incorrect boot interface label",
 				reportxml.ID("77390"), tsparams.TemplateIncorrectLabel, tsparams.PRNodeConfigFailedCondition),
-			// 77392 - Apply a ProvisioningRequest referencing an invalid ClusterTemplate
-			Entry("fails to provision with invalid ClusterTemplate",
-				reportxml.ID("77392"), tsparams.TemplateInvalid, tsparams.PRValidationFailedCondition),
-			// 78245 - Missing schema while provisioning without hardware template
-			Entry("fails to provision without a HardwareTemplate when required schema is missing",
-				reportxml.ID("78245"), tsparams.TemplateMissingSchema, tsparams.PRValidationFailedCondition),
 		)
 
 		// 78246 - Successful provisioning without hardware template

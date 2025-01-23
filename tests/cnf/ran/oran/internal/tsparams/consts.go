@@ -14,20 +14,29 @@ const (
 )
 
 const (
-	// ClusterTemplateName is the name without the version of the ClusterTemplate used in the ORAN tests.
+	// ClusterTemplateName is the name without the version of the ClusterTemplate used in the ORAN tests. It is also
+	// the namespace the ClusterTemplates are in.
 	ClusterTemplateName = "sno-ran-du"
 	// HardwareManagerNamespace is the namespace that HardwareManagers and their secrets use.
 	HardwareManagerNamespace = "oran-hwmgr-plugin"
+	// O2IMSNamespace is the namespace used by the oran-o2ims operator.
+	O2IMSNamespace = "oran-o2ims"
 	// ExtraManifestsName is the name of the generated extra manifests ConfigMap in the cluster Namespace.
-	ExtraManifestsName = "sno-ran-du-extra-manifests-1"
+	ExtraManifestsName = "sno-ran-du-extra-manifest-1"
 	// ClusterInstanceParamsKey is the key in the TemplateParameters map for the ClusterInstance parameters.
 	ClusterInstanceParamsKey = "clusterInstanceParameters"
 	// PolicyTemplateParamsKey is the key in the TemplateParameters map for the policy template parameters.
 	PolicyTemplateParamsKey = "policyTemplateParameters"
 	// HugePagesSizeKey is the key in TemplateParameters.policyTemplateParameters that sets the hugepages size.
 	HugePagesSizeKey = "hugepages-size"
+
 	// ImmutableMessage is the message to expect in a Policy's history when an immutable field cannot be updated.
 	ImmutableMessage = "cannot be updated, likely due to immutable fields not matching"
+	// CTMissingSchemaMessage is the ClusterTemplate condition message for when required schema is missing.
+	CTMissingSchemaMessage = "Error validating the clusterInstanceParameters schema"
+	// CTMissingLabelMessage is the ClusterTemplate condition message for when the default ConfigMap is missing an
+	// interface label.
+	CTMissingLabelMessage = "failed to validate the default ConfigMap: 'label' is missing for interface"
 )
 
 const (
@@ -71,6 +80,12 @@ const (
 	TestOriginalValue = "original-value"
 	// TestNewValue is the new value to set in the test ConfigMap.
 	TestNewValue = "new-value"
+	// TestPRName is the UUID used for naming ProvisioningRequests. Since metadata.name must be a UUID, just use a
+	// constant one for consistency.
+	TestPRName = "9c5372f3-ea1d-4a96-8157-b3b874a55cf9"
+	// TestBase64Credential is a base64 encoded version of the string "wrongpassword" for when an obviously invalid
+	// credential is needed.
+	TestBase64Credential = "d3JvbmdwYXNzd29yZA=="
 )
 
 // LogLevel is the glog verbosity level to use for logs in this suite or its helpers.

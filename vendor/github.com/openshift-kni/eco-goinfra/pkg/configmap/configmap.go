@@ -160,6 +160,11 @@ func (builder *Builder) Exists() bool {
 	builder.Object, err = builder.apiClient.ConfigMaps(builder.Definition.Namespace).Get(
 		context.TODO(), builder.Definition.Name, metav1.GetOptions{})
 
+	if err != nil {
+		glog.V(100).Infof("Failed to get ConfigMap %s in namespace %s: %v",
+			builder.Definition.Name, builder.Definition.Namespace, err)
+	}
+
 	return err == nil || !k8serrors.IsNotFound(err)
 }
 

@@ -1,13 +1,13 @@
 package tests
 
 import (
-	"encoding/base64"
+	"bytes"
 	"os"
 	"time"
 
+	"github.com/golang/glog"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	"github.com/openshift-kni/eco-goinfra/pkg/configmap"
 	"github.com/openshift-kni/eco-goinfra/pkg/oran"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
@@ -24,53 +24,60 @@ var _ = Describe("ORAN Provision Tests", Label(tsparams.LabelProvision), Ordered
 	var prBuilder *oran.ProvisioningRequestBuilder
 
 	AfterAll(func() {
+		kubeconfigPath, ok := os.LookupEnv("KUBECONFIG")
+		if !ok {
+			glog.V(tsparams.LogLevel).Info("KUBECONFIG not set, will not save spoke 1 kubeconfig")
+
+			return
+		}
+
 		By("saving the spoke 1 admin kubeconfig")
 		kubeconfigSecret, err := secret.Pull(HubAPIClient, RANConfig.Spoke1Name+"-admin-kubeconfig", RANConfig.Spoke1Name)
 		Expect(err).ToNot(HaveOccurred(), "Failed to get the spoke 1 kubeconfig secret")
 
-		kubeconfig, err := base64.StdEncoding.DecodeString(string(kubeconfigSecret.Definition.Data["kubeconfig"]))
-		Expect(err).ToNot(HaveOccurred(), "Failed to decode the spoke 1 kubeconfig secret")
+		kubeconfig, exists := kubeconfigSecret.Definition.Data["kubeconfig"]
+		Expect(exists).To(BeTrue(), "Kubeconfig key does not exist in kubeconfig secret")
 
-		err = os.WriteFile(RANConfig.Spoke2Kubeconfig, kubeconfig, 0644)
+		err = os.WriteFile(kubeconfigPath, kubeconfig, 0644)
 		Expect(err).ToNot(HaveOccurred(), "Failed to save the spoke 1 admin kubeconfig")
 	})
 
 	// 77393 - Apply a ProvisioningRequest with missing required input parameter
 	It("recovers provisioning when invalid ProvisioningRequest is updated", reportxml.ID("77393"), func() {
-		By("creating a ProvisioningRequest with nodeClusterName missing")
-		prBuilder = oran.NewPRBuilder(
-			HubAPIClient, RANConfig.Spoke1Name, tsparams.ClusterTemplateName, tsparams.TemplateValid).
-			WithTemplateParameter("oCloudSiteId", RANConfig.Spoke1Name).
-			WithTemplateParameter("policyTemplateParameters", map[string]any{}).
-			WithTemplateParameter("clusterInstanceParameters", map[string]any{
-				"clusterName": RANConfig.Spoke1Name,
-				"nodes": []map[string]any{{
-					"hostName": RANConfig.Spoke1Hostname,
-				}},
+		By("creating a ProvisioningRequest with invalid policyTemplateParameters")
+		prBuilder = helper.NewProvisioningRequest(
+			HubAPIClient, RANConfig.Spoke1Name, RANConfig.Spoke1Hostname, tsparams.TemplateValid).
+			WithTemplateParameter(tsparams.PolicyTemplateParamsKey, map[string]any{
+				// By using an integer when the schema specifies a string we can create an invalid
+				// ProvisioningRequest without being stopped by the webhook.
+				tsparams.TestName: 1,
 			})
 
 		var err error
 		prBuilder, err = prBuilder.Create()
-		Expect(err).ToNot(HaveOccurred(), "Failed to create a ProvisioningRequest with nodeClusterName missing")
+		Expect(err).ToNot(HaveOccurred(), "Failed to create an invalid ProvisioningRequest")
 
 		By("checking the ProvisioningRequest status for a failure")
 		prBuilder, err = prBuilder.WaitForCondition(tsparams.PRValidationFailedCondition, time.Minute)
 		Expect(err).ToNot(HaveOccurred(), "Failed to wait for the ProvisioningRequest to fail")
 
-		By("updating the ProvisioningRequest to add nodeClusterName")
-		prBuilder = prBuilder.WithTemplateParameter("nodeClusterName", RANConfig.Spoke1Name)
+		By("updating the ProvisioningRequest with valid policyTemplateParameters")
+		prBuilder = prBuilder.WithTemplateParameter(tsparams.PolicyTemplateParamsKey, map[string]any{})
 		prBuilder, err = prBuilder.Update()
 		Expect(err).ToNot(HaveOccurred(), "Failed to update the ProvisioningRequest to add nodeClusterName")
 
 		By("waiting for ProvisioningRequest validation to succeed")
-		prBuilder, err = prBuilder.WaitForCondition(tsparams.PRValidationSucceededCondition, time.Minute)
+		_, err = prBuilder.WaitForCondition(tsparams.PRValidationSucceededCondition, time.Minute)
 		Expect(err).ToNot(HaveOccurred(), "Failed to wait for ProvisioningRequest validation to succeed")
 	})
 
 	// 77394 - Apply a valid ProvisioningRequest
 	It("successfully provisions with a valid ProvisioningRequest", reportxml.ID("77394"), func() {
-		By("waiting for the ProvisioningRequest to apply configuration")
 		var err error
+		prBuilder, err = oran.PullPR(HubAPIClient, tsparams.TestPRName)
+		Expect(err).ToNot(HaveOccurred(), "Failed to pull existing ProvisioningRequest")
+
+		By("waiting for the ProvisioningRequest to apply configuration")
 		prBuilder, err = prBuilder.WaitForCondition(tsparams.PRConfigurationAppliedCondition, 2*time.Hour)
 		Expect(err).ToNot(HaveOccurred(), "Failed to wait for the ProvisioningRequest to apply configuration")
 
@@ -95,7 +102,7 @@ var _ = Describe("ORAN Provision Tests", Label(tsparams.LabelProvision), Ordered
 
 		By("verifying spoke 1 policy ConfigMap was created")
 		pgMap, err := configmap.Pull(
-			HubAPIClient, RANConfig.Spoke1Name+"-pg", "ztp-"+getClusterTemplateNamespace(HubAPIClient))
+			HubAPIClient, RANConfig.Spoke1Name+"-pg", "ztp-"+tsparams.ClusterTemplateName)
 		Expect(err).ToNot(HaveOccurred(), "Failed to pull policy ConfigMap for spoke 1")
 		Expect(pgMap.Object).ToNot(BeNil(), "Failed to get policy ConfigMap object for spoke 1")
 
@@ -116,26 +123,16 @@ var _ = Describe("ORAN Provision Tests", Label(tsparams.LabelProvision), Ordered
 		bmcSecret, err := secret.Pull(HubAPIClient, clusterInstanceNode.BmcCredentialsName.Name, RANConfig.Spoke1Name)
 		Expect(err).ToNot(HaveOccurred(), "Failed to pull spoke 1 BMC secret")
 
-		bmcUsername, err := base64.StdEncoding.DecodeString(string(bmcSecret.Definition.Data["username"]))
-		Expect(err).ToNot(HaveOccurred(), "Failed to decode spoke 1 BMC username")
-		Expect(bmcUsername).To(Equal(RANConfig.BMCUsername), "ClusterInstance has incorrect BMC username")
+		bmcUsername, exists := bmcSecret.Definition.Data["username"]
+		Expect(exists).To(BeTrue(), "Username does not exist in BMC secret")
 
-		bmcPassword, err := base64.StdEncoding.DecodeString(string(bmcSecret.Definition.Data["password"]))
-		Expect(err).ToNot(HaveOccurred(), "Failed to decode spoke 1 BMC password")
-		Expect(bmcPassword).To(Equal(RANConfig.BMCPassword), "ClusterInstance has incorrect BMC password")
+		bmcUsername = bytes.TrimSpace(bmcUsername)
+		Expect(string(bmcUsername)).To(Equal(RANConfig.BMCUsername), "ClusterInstance has incorrect BMC username")
+
+		bmcPassword, exists := bmcSecret.Definition.Data["password"]
+		Expect(exists).To(BeTrue(), "Passowrd does not exist in BMC secret")
+
+		bmcPassword = bytes.TrimSpace(bmcPassword)
+		Expect(string(bmcPassword)).To(Equal(RANConfig.BMCPassword), "ClusterInstance has incorrect BMC password")
 	})
 })
-
-func getClusterTemplateNamespace(client *clients.Settings) string {
-	clusterTemplates, err := oran.ListClusterTemplates(client)
-	Expect(err).ToNot(HaveOccurred(), "Failed to list ClusterTemplates")
-
-	expectedName := tsparams.ClusterTemplateName + "." + tsparams.TemplateValid
-	for _, clusterTemplate := range clusterTemplates {
-		if clusterTemplate.Definition.Name == expectedName {
-			return clusterTemplate.Definition.Namespace
-		}
-	}
-
-	return ""
-}
