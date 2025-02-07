@@ -107,6 +107,8 @@ func execCommand(command *exec.Cmd) error {
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &stdout
 	command.Stderr = &stderr
+	// command.Stdout = io.MultiWriter(os.Stdout, &stdout)
+	// command.Stderr = io.MultiWriter(os.Stderr, &stderr)
 
 	err := command.Run()
 	if err != nil {

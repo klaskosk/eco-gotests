@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"runtime/debug"
 
 	"github.com/golang/glog"
 )
@@ -17,7 +18,8 @@ const (
 )
 
 var (
-	errCacheMiss = fmt.Errorf("cache miss")
+	errCacheMiss        = fmt.Errorf("cache miss")
+	buildInfo, useCache = debug.ReadBuildInfo()
 )
 
 // IsMiss returns true if the given error is a cache miss error and false otherwise.

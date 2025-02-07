@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/onsi/ginkgo/v2/types" //nolint:depguard // Fine since it is only for the report type
+	"github.com/onsi/ginkgo/v2/types"
 )
 
 // SuiteTree represents a tree of test suites. Suites are indentified by their path in in file system.
@@ -26,6 +26,9 @@ type SuiteTree struct {
 	Specs int
 	// Children is a list of child suites. It can be sorted by [SuiteTree.Sort].
 	Children []*SuiteTree
+	// SpecReport should only be set when Children is empty, meaning this is a leaf node representing a single spec.
+	// It should only have It specs.
+	SpecReport *types.SpecReport
 }
 
 // NewFromReports creates a new SuiteTree from a list of reports. The root of the tree will be `/`.
@@ -38,7 +41,8 @@ func NewFromReports(reports []types.Report) *SuiteTree {
 	}
 
 	for _, report := range reports {
-		root.Insert(report.SuitePath, report.SuiteDescription, report.PreRunStats.TotalSpecs)
+		leaf := root.Insert(report.SuitePath, report.SuiteDescription, report.PreRunStats.TotalSpecs)
+		leaf.InsertSpecs(report.SpecReports)
 	}
 
 	return root
@@ -107,6 +111,24 @@ func (tree *SuiteTree) Insert(suitePath, description string, specs int) *SuiteTr
 	currNode.Children = nil
 
 	return currNode
+}
+
+// InsertSpecs will add the spec reports to the receiver's children. This assumes that the receiver is a leaf node.
+func (tree *SuiteTree) InsertSpecs(specs types.SpecReports) {
+	glog.V(100).Infof("Inserting specs into suite %s", tree.Path)
+
+	specs = specs.WithLeafNodeType(types.NodeTypeIt)
+	for _, spec := range specs {
+		text := "It " + spec.LeafNodeText
+		copiedSpec := spec
+		child := &SuiteTree{
+			Path:       path.Join(tree.Path, text),
+			Name:       text,
+			Specs:      1,
+			SpecReport: &copiedSpec,
+		}
+		tree.Children = append(tree.Children, child)
+	}
 }
 
 // Sort sorts the children of the tree first by the number of specs and then by name. If descending is true, the

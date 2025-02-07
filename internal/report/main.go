@@ -22,7 +22,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"html/template"
 	"os"
+	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/golang/glog"
 )
@@ -93,6 +97,20 @@ func main() {
 	tree.Sort(true)
 	fmt.Print(tree)
 
+	err = templateTree(templateValues{
+		Tree:       tree,
+		Generated:  time.Now(),
+		Branch:     branch,
+		ActionURL:  "/",
+		RepoURL:    "https://github.com/openshift-kni/eco-gotests",
+		TimeFormat: time.RFC3339,
+	})
+	if err != nil {
+		glog.Errorf("Failed to template SuiteTree: %v", err)
+
+		os.Exit(1)
+	}
+
 	flameGraph := NewFromSuiteTree(tree)
 	err = flameGraph.Save("internal/report/data.json")
 
@@ -151,4 +169,48 @@ func getFromCacheOrDryRun(cache *Cache, repoPath string) (*SuiteTree, error) {
 	}
 
 	return tree, nil
+}
+
+type templateValues struct {
+	Tree       *SuiteTree
+	Generated  time.Time
+	Branch     string
+	ActionURL  template.URL
+	RepoURL    template.URL
+	TimeFormat string
+}
+
+func templateTree(values templateValues) error {
+	tmpl, err := template.New("template.html").
+		Funcs(template.FuncMap{"cleanPath": cleanPath}).
+		ParseFiles("internal/report/template.html")
+	if err != nil {
+		return err
+	}
+
+	outputFile, err := os.Create("internal/report/templated.html")
+	if err != nil {
+		return err
+	}
+
+	defer outputFile.Close()
+
+	err = tmpl.Execute(outputFile, values)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// cleanPath cleans the provided path of anything preceding the eco-gotests directory.
+func cleanPath(path string) string {
+	pathElements := strings.Split(path, string(os.PathSeparator))
+	for i, element := range pathElements {
+		if element == "eco-gotests" {
+			return filepath.Join(pathElements[i:]...)
+		}
+	}
+
+	return path
 }
