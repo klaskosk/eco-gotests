@@ -1,0 +1,76 @@
+name: Generate Tests Report
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+      - 'release-[0-9].[0-9][0-9]'
+      - ginkgo-report
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      SHELL: /bin/bash
+      XDG_CACHE_HOME: ${{ github.workspace }}/cache
+
+    steps:
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.6
+
+      # Since we only use the checked out repo for the report generating code,
+      # always grab the latest from the default branch rather than the branch
+      # that triggered this action.
+      - uses: actions/checkout@v4
+        with:
+          ref: ginkgo-report
+          # ref: ${{ github.event.repository.default_branch }}
+      
+      - name: Install ginkgo
+        run: make install-ginkgo
+
+      - name: Restore cached report data
+        id: cached-data-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ github.workspace }}/cache/eco-gotests
+          # The report program manages cache versions itself so we use a
+          # constant key and allow the program to delete expired files.
+          key: report-cache
+
+      - name: Generate report
+        run: go run ./internal/report -v 100 -b 'main release-*' -o ./report
+
+      - name: Upload generated report as artifact
+        id: upload-pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./report
+
+      - name: Save cached report data
+        id: cached-data-save
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ github.workspace }}/cache/eco-gotests
+          key: ${{ steps.cached-data-restore.outputs.cache-primary-key }}
+
+  deploy:
+    needs: build
+
+    permissions:
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.upload-pages.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub pages
+        id: upload-pages
+        uses: actions/deploy-pages@v4

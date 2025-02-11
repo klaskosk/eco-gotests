@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -54,6 +55,10 @@ type BranchReportConfig struct {
 }
 
 func TemplateReport(config ReportTemplateConfig, outputFileName string) error {
+	slices.SortFunc(config.BranchReports, func(a, b BranchReportConfig) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+
 	return executeTemplateAndSave(reportTemplate, config, outputFileName)
 }
 
