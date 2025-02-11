@@ -1,8 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"fmt"
+	"io"
+	"iter"
 	"os"
 	"os/exec"
 	"path"
@@ -12,7 +16,7 @@ import (
 )
 
 // CloneRepo clones the eco-gotests repo from the given repo and branch and returns the path to the cloned repo.
-func CloneRepo(localPath, repo, branch string) (string, error) {
+func CloneRepo(ctx context.Context, localPath, repo, branch string) (string, error) {
 	clonedPath := path.Join(localPath, "eco-gotests")
 
 	glog.V(100).Infof("Cloning repo %s with branch %s to %s", repo, branch, clonedPath)
@@ -22,7 +26,7 @@ func CloneRepo(localPath, repo, branch string) (string, error) {
 		return "", err
 	}
 
-	cmd := exec.Command("git", "clone", "-b", branch, repo, "eco-gotests")
+	cmd := exec.CommandContext(ctx, "git", "clone", "-b", branch, repo, "eco-gotests")
 	cmd.Dir = localPath
 
 	err = execCommand(cmd)
@@ -34,10 +38,10 @@ func CloneRepo(localPath, repo, branch string) (string, error) {
 }
 
 // DryRun runs the eco-gotests tests in dry-run mode and returns the path to the JSON report file.
-func DryRun(clonedPath string) (string, error) {
+func DryRun(ctx context.Context, clonedPath string) (string, error) {
 	glog.V(100).Infof("Running eco-gotests dry-run in %s", clonedPath)
 
-	cmd := exec.Command("ginkgo", "--json-report=report.json", "-dry-run", "-v", "-r", "./tests")
+	cmd := exec.CommandContext(ctx, "ginkgo", "--json-report=report.json", "-dry-run", "-v", "-r", "./tests")
 	cmd.Dir = clonedPath
 	cmd.Env = append(cmd.Env, os.Environ()...)
 	cmd.Env = append(cmd.Env, "ECO_DRY_RUN=true")
@@ -53,10 +57,25 @@ func DryRun(clonedPath string) (string, error) {
 }
 
 // GetRepoRevision returns the current revision of the repo at the given path.
-func GetRepoRevision(repoPath string) (string, error) {
+func GetRepoRevision(ctx context.Context, repoPath string) (string, error) {
 	glog.V(100).Infof("Getting repo revision for %s", repoPath)
 
-	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "HEAD")
+	cmd.Dir = repoPath
+
+	stdout, err := execCommandWithStdout(cmd)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(stdout), nil
+}
+
+// GetRepoBranch returns the current branch of the repo at the given path.
+func GetRepoBranch(ctx context.Context, repoPath string) (string, error) {
+	glog.V(100).Infof("Getting repo branch for %s", repoPath)
+
+	cmd := exec.CommandContext(ctx, "git", "branch", "--show-current")
 	cmd.Dir = repoPath
 
 	stdout, err := execCommandWithStdout(cmd)
@@ -68,10 +87,10 @@ func GetRepoRevision(repoPath string) (string, error) {
 }
 
 // HasLocalChanges returns true if the repo at the given path has uncommitted changes and false otherwise.
-func HasLocalChanges(repoPath string) (bool, error) {
+func HasLocalChanges(ctx context.Context, repoPath string) (bool, error) {
 	glog.V(100).Infof("Checking for local changes in %s", repoPath)
 
-	cmd := exec.Command("git", "status", "--porcelain")
+	cmd := exec.CommandContext(ctx, "git", "status", "--porcelain")
 	cmd.Dir = repoPath
 
 	stdout, err := execCommandWithStdout(cmd)
@@ -83,10 +102,10 @@ func HasLocalChanges(repoPath string) (bool, error) {
 }
 
 // GetRemoteRevision returns the revision of the remote branch with the given name in the given repo.
-func GetRemoteRevision(repo, branch string) (string, error) {
+func GetRemoteRevision(ctx context.Context, repo, branch string) (string, error) {
 	glog.V(100).Infof("Getting remote revision for repo %s and branch %s", repo, branch)
 
-	cmd := exec.Command("git", "ls-remote", repo, branch)
+	cmd := exec.CommandContext(ctx, "git", "ls-remote", repo, "refs/heads/"+branch)
 
 	stdout, err := execCommandWithStdout(cmd)
 	if err != nil {
@@ -101,19 +120,56 @@ func GetRemoteRevision(repo, branch string) (string, error) {
 	return strings.TrimSpace(revision), nil
 }
 
+// GetRemoteRevisions returns a map of branches to revisions executing just one command. Provided branches will not
+// appear in the returned map if they are not found on the remote repo.
+func GetRemoteRevisions(ctx context.Context, repo string, branches iter.Seq[string]) (map[string]string, error) {
+	glog.V(100).Infof("Getting remote revisions for repo %s", repo)
+
+	args := []string{"ls-remote", repo}
+	for branch := range branches {
+		args = append(args, "refs/heads/"+branch)
+	}
+
+	glog.V(100).Infof("Getting remote revisions with arguments %+v", args)
+	cmd := exec.CommandContext(ctx, "git", args...)
+
+	stdout, err := execCommandWithStdout(cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	revisions := make(map[string]string)
+	scanner := bufio.NewScanner(strings.NewReader(stdout))
+
+	for scanner.Scan() {
+		revision, branch, found := strings.Cut(scanner.Text(), "\t")
+		if !found {
+			return nil, fmt.Errorf("failed to parse remote revision from `%s`", scanner.Text())
+		}
+
+		branch = strings.TrimPrefix(branch, "refs/heads/")
+		revisions[branch] = revision
+	}
+
+	err = scanner.Err()
+	if err != nil {
+		return nil, err
+	}
+
+	return revisions, nil
+}
+
 // execCommand executes the given command and returns an error if it fails. It captures the stdout and stderr of the
 // command and logs them if the command fails.
 func execCommand(command *exec.Cmd) error {
 	var stdout, stderr bytes.Buffer
 	command.Stdout = &stdout
 	command.Stderr = &stderr
-	// command.Stdout = io.MultiWriter(os.Stdout, &stdout)
-	// command.Stderr = io.MultiWriter(os.Stderr, &stderr)
 
 	err := command.Run()
 	if err != nil {
-		glog.V(100).Infof(
-			"Command %s failed with error: %v\nStdout: %s\nStderr: %s", command.String(), err, stdout.String(), stderr.String())
+		glog.V(100).Infof("Command %s failed with error: %v\nStdout: %s\nStderr: %s",
+			command.String(), err, stdout.String(), stderr.String())
 
 		return err
 	}
@@ -125,14 +181,16 @@ func execCommand(command *exec.Cmd) error {
 // captures the stdout and stderr of the command and logs them if the command fails.
 func execCommandWithStdout(command *exec.Cmd) (string, error) {
 	var stdout, stderr bytes.Buffer
-	command.Stdout = &stdout
-	command.Stderr = &stderr
+	command.Stdout = io.MultiWriter(os.Stdout, &stdout)
+	command.Stderr = io.MultiWriter(os.Stderr, &stderr)
 
 	err := command.Run()
 	if err != nil {
-		glog.V(100).Infof(
-			"Command %s failed with error: %v\nStdout: %s", command.String(), err, stdout.String())
+		glog.V(100).Infof("Command %s failed with error: %v\nStdout: %s\nStderr: %s",
+			command.String(), err, stdout.String(), stderr.String())
+
+		return "", err
 	}
 
-	return stdout.String(), err
+	return stdout.String(), nil
 }
