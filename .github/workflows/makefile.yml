@@ -17,6 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SHELL: /bin/bash
+      GOLANGCI_LINT_CACHE: ${{ github.workspace }}/golangci-lint-cache
 
     steps:
       - name: Set up Go 1.22
@@ -26,6 +27,19 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      # Restore cache scoped by the OS and branch name (or target branch for
+      # pull requests) and save per commit. By saving the cache per commit, the
+      # restored cache is always up-to-date. Including the branch name ensures
+      # that the caches are specific to each branch and allows PRs to restore
+      # from their target branch.
+      - name: Cache lint results
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.GOLANGCI_LINT_CACHE }}
+          key: golangci-lint-${{ runner.os }}-${{ github.event_name == 'pull_request' && github.base_ref || github.ref }}-${{ github.sha }}
+          restore-keys: |
+            golangci-lint-${{ runner.os }}-${{ github.event_name == 'pull_request' && github.base_ref || github.ref }}
+      
       - name: Run lint
         run: make lint
 
