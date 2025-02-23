@@ -35,6 +35,10 @@ var _ = Describe("ORAN Post-provision Tests", Label(tsparams.LabelPostProvision)
 
 		copiedSpec := prBuilder.Definition.Spec
 		originalPRSpec = &copiedSpec
+
+		By("verifying ProvisioningRequest is fulfilled to start")
+		prBuilder, err = prBuilder.WaitUntilFulfilled(time.Minute)
+		Expect(err).ToNot(HaveOccurred(), "Failed to verify spoke 1 ProvisioningRequest is fulfilled")
 	})
 
 	AfterEach(func() {
@@ -189,10 +193,6 @@ var _ = Describe("ORAN Post-provision Tests", Label(tsparams.LabelPostProvision)
 
 	// 77379 - Failed update to ProvisioningRequest and successful rollback
 	It("successfully rolls back failed ProvisioningRequest update", reportxml.ID("77379"), func() {
-		By("verifying ProvisioningRequest is valid to start")
-		prBuilder, err := prBuilder.WaitForCondition(tsparams.PRConfigurationAppliedCondition, time.Minute)
-		Expect(err).ToNot(HaveOccurred(), "Failed to verify spoke 1 ProvisioningRequest has ConfigurationApplied")
-
 		By("updating the policyTemplateParameters")
 		prBuilder = prBuilder.WithTemplateParameter(tsparams.PolicyTemplateParamsKey, map[string]string{
 			tsparams.HugePagesSizeKey: "2G",
@@ -200,7 +200,7 @@ var _ = Describe("ORAN Post-provision Tests", Label(tsparams.LabelPostProvision)
 		prBuilder = updatePRUntilNoConflict(prBuilder)
 
 		By("waiting for policy to go NonCompliant")
-		err = helper.WaitForNoncompliantImmutable(HubAPIClient, RANConfig.Spoke1Name, time.Minute)
+		err := helper.WaitForNoncompliantImmutable(HubAPIClient, RANConfig.Spoke1Name, time.Minute)
 		Expect(err).ToNot(HaveOccurred(), "Failed to wait for a spoke 1 policy to go NonCompliant due to immutable field")
 
 		By("fixing the policyTemplateParameters")
