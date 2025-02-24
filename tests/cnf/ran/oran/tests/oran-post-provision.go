@@ -105,6 +105,11 @@ var _ = Describe("ORAN Post-provision Tests", Label(tsparams.LabelPostProvision)
 		})
 
 		prBuilder = updatePRUntilNoConflict(prBuilder)
+
+		// This test case updates a previously compliant policy so if we check the compliance state too soon we
+		// risk a situation where the policy has been updated but its compliance state has not been.
+		time.Sleep(15 * time.Second)
+
 		waitForPolicies(prBuilder)
 
 		By("verifying the test ConfigMap has the new value")
