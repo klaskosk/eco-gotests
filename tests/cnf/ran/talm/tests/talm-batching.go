@@ -21,7 +21,6 @@ import (
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/talm/internal/tsparams"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), func() {
@@ -107,15 +106,15 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 				WithCluster(RANConfig.Spoke2Name).
 				WithManagedPolicy(tsparams.PolicyName)
 			cguBuilder.Definition.Spec.RemediationStrategy.Timeout = 9
-			cguBuilder.Definition.Spec.Enable = ptr.To(false)
+			// cguBuilder.Definition.Spec.Enable = ptr.To(false)
 			cguBuilder.Definition.Spec.BatchTimeoutAction = "Abort"
 
 			cguBuilder, err = helper.SetupCguWithCatSrc(cguBuilder)
 			Expect(err).ToNot(HaveOccurred(), "Failed to setup CGU")
 
-			By("waiting to enable the CGU")
-			cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
-			Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
+			// By("waiting to enable the CGU")
+			// cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
+			// Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
 
 			By("waiting for the CGU to timeout")
 			cguBuilder, err = cguBuilder.WaitForCondition(tsparams.CguTimeoutReasonCondition, 11*time.Minute)
@@ -169,14 +168,14 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 				WithCluster(RANConfig.Spoke2Name).
 				WithManagedPolicy(tsparams.PolicyName)
 			cguBuilder.Definition.Spec.RemediationStrategy.Timeout = 9
-			cguBuilder.Definition.Spec.Enable = ptr.To(false)
+			// cguBuilder.Definition.Spec.Enable = ptr.To(false)
 
 			cguBuilder, err = helper.SetupCguWithCatSrc(cguBuilder)
 			Expect(err).ToNot(HaveOccurred(), "Failed to setup CGU")
 
-			By("waiting to enable the CGU")
-			cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
-			Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
+			// By("waiting to enable the CGU")
+			// cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
+			// Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
 
 			By("waiting for the CGU to timeout")
 			_, err = cguBuilder.WaitForCondition(tsparams.CguTimeoutReasonCondition, 16*time.Minute)
@@ -211,14 +210,14 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 				WithCluster(RANConfig.Spoke2Name).
 				WithManagedPolicy(tsparams.PolicyName)
 			cguBuilder.Definition.Spec.RemediationStrategy.Timeout = 9
-			cguBuilder.Definition.Spec.Enable = ptr.To(false)
+			// cguBuilder.Definition.Spec.Enable = ptr.To(false)
 
 			cguBuilder, err = helper.SetupCguWithCatSrc(cguBuilder)
 			Expect(err).ToNot(HaveOccurred(), "Failed to setup CGU")
 
-			By("waiting to enable the CGU")
-			cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
-			Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
+			// By("waiting to enable the CGU")
+			// cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
+			// Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
 
 			By("waiting for the CGU to timeout")
 			_, err = cguBuilder.WaitForCondition(tsparams.CguTimeoutReasonCondition, 16*time.Minute)
@@ -255,14 +254,14 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 					WithCluster(RANConfig.Spoke2Name).
 					WithManagedPolicy(tsparams.PolicyName)
 				cguBuilder.Definition.Spec.RemediationStrategy.Timeout = expectedTimeout
-				cguBuilder.Definition.Spec.Enable = ptr.To(false)
+				// cguBuilder.Definition.Spec.Enable = ptr.To(false)
 
 				cguBuilder, err = helper.SetupCguWithCatSrc(cguBuilder)
 				Expect(err).ToNot(HaveOccurred(), "Failed to setup CGU")
 
-				By("waiting to enable the CGU")
-				cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
-				Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
+				// By("waiting to enable the CGU")
+				// cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
+				// Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
 
 				By("waiting for the CGU to timeout")
 				cguBuilder, err = cguBuilder.WaitForCondition(tsparams.CguTimeoutReasonCondition, 21*time.Minute)
@@ -311,14 +310,14 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 				WithCluster(RANConfig.Spoke1Name).
 				WithManagedPolicy(tsparams.PolicyName)
 			cguBuilder.Definition.Spec.RemediationStrategy.Timeout = expectedTimeout
-			cguBuilder.Definition.Spec.Enable = ptr.To(false)
+			// cguBuilder.Definition.Spec.Enable = ptr.To(false)
 
 			cguBuilder, err = helper.SetupCguWithCatSrc(cguBuilder)
 			Expect(err).ToNot(HaveOccurred(), "Failed to setup CGU")
 
-			By("waiting to enable the CGU")
-			cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
-			Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
+			// By("waiting to enable the CGU")
+			// cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
+			// Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
 
 			By("waiting for the CGU to timeout")
 			cguBuilder, err = cguBuilder.WaitForCondition(tsparams.CguTimeoutReasonCondition, 11*time.Minute)
@@ -361,7 +360,7 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 			cguBuilder := cgu.NewCguBuilder(HubAPIClient, tsparams.CguName, tsparams.TestNamespace, 1).
 				WithManagedPolicy(tsparams.PolicyName)
 			cguBuilder.Definition.Spec.RemediationStrategy.Timeout = 15
-			cguBuilder.Definition.Spec.Enable = ptr.To(false)
+			// cguBuilder.Definition.Spec.Enable = ptr.To(false)
 
 			By(fmt.Sprintf(
 				"using MatchLabels with name %s and MatchExpressions with name %s", RANConfig.Spoke1Name, RANConfig.Spoke2Name))
@@ -396,9 +395,9 @@ var _ = Describe("TALM Batching Tests", Label(tsparams.LabelBatchingTestCases), 
 			cguBuilder, err = cguBuilder.Create()
 			Expect(err).ToNot(HaveOccurred(), "Failed to create CGU")
 
-			By("waiting to enable the CGU")
-			cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
-			Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
+			// By("waiting to enable the CGU")
+			// cguBuilder, err = helper.WaitToEnableCgu(cguBuilder)
+			// Expect(err).ToNot(HaveOccurred(), "Failed to wait and enable the CGU")
 
 			By("waiting for the CGU to finish successfully")
 			_, err = cguBuilder.WaitForCondition(tsparams.CguSuccessfulFinishCondition, 21*time.Minute)

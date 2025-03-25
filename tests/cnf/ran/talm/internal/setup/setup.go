@@ -26,14 +26,6 @@ func CreateTalmTestNamespace() error {
 		}
 	}
 
-	// spoke 2 may be optional depending on what tests are running
-	if Spoke2APIClient != nil {
-		_, err := namespace.NewBuilder(Spoke2APIClient, tsparams.TestNamespace).Create()
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 

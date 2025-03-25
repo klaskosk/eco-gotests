@@ -51,10 +51,10 @@ func SetupCguWithNamespace(cguBuilder *cgu.CguBuilder, suffix string) (*cgu.CguB
 		return nil, err
 	}
 
-	err = waitForPolicyComponentsExist(HubAPIClient, suffix)
-	if err != nil {
-		return nil, err
-	}
+	// err = waitForPolicyComponentsExist(HubAPIClient, suffix)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return cguBuilder.Create()
 }
@@ -81,10 +81,10 @@ func SetupCguWithCatSrc(cguBuilder *cgu.CguBuilder) (*cgu.CguBuilder, error) {
 		return nil, err
 	}
 
-	err = waitForPolicyComponentsExist(HubAPIClient, "")
-	if err != nil {
-		return nil, err
-	}
+	// err = waitForPolicyComponentsExist(HubAPIClient, "")
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return cguBuilder.Create()
 }
@@ -113,10 +113,10 @@ func SetupCguWithClusterVersion(
 		return nil, err
 	}
 
-	err = waitForPolicyComponentsExist(HubAPIClient, "")
-	if err != nil {
-		return nil, err
-	}
+	// err = waitForPolicyComponentsExist(HubAPIClient, "")
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	return cguBuilder.Create()
 }

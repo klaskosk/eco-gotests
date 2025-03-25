@@ -66,6 +66,10 @@ func CleanupTestResourcesOnSpokes(clusters []*clients.Settings, suffix string) [
 	var errorList []error
 
 	for _, client := range clusters {
+		if client == nil {
+			continue
+		}
+
 		// Only errors that come from deletions are kept since an error pulling usually means it doesn't exist.
 		catalogSource, err := olm.PullCatalogSource(client, tsparams.CatalogSourceName+suffix, tsparams.TemporaryNamespace)
 		if err == nil {
@@ -86,7 +90,7 @@ func CleanupTestResourcesOnSpokes(clusters []*clients.Settings, suffix string) [
 
 // DeleteTalmTestNamespace deletes the TALM test namespace.
 func DeleteTalmTestNamespace() error {
-	clusters := []*clients.Settings{HubAPIClient, Spoke1APIClient, Spoke2APIClient}
+	clusters := []*clients.Settings{HubAPIClient, Spoke1APIClient}
 
 	for _, client := range clusters {
 		if client != nil {
