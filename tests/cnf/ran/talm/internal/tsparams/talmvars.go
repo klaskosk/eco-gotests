@@ -4,9 +4,11 @@ import (
 	"fmt"
 
 	cguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	"github.com/openshift-kni/eco-goinfra/pkg/schemes/ocm/clusterv1"
 	olmv1alpha1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/olm/operators/v1alpha1"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/ranparam"
 	"github.com/openshift-kni/k8sreporter"
+	configv1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -43,6 +45,8 @@ var (
 		{Cr: &policiesv1.PlacementBindingList{}, Namespace: ptr.To(TestNamespace)},
 		{Cr: &placementrulev1.PlacementRuleList{}, Namespace: ptr.To(TestNamespace)},
 		{Cr: &policiesv1beta1.PolicySetList{}, Namespace: ptr.To(TestNamespace)},
+		{Cr: &clusterv1.ManagedClusterList{}},
+		{Cr: &configv1.ClusterVersionList{}},
 	}
 
 	// ReporterSpokeCRsToDump is the CRs the reporter should dump on the spokes.

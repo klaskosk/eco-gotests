@@ -690,6 +690,11 @@ func copyPoliciesWithSubscription(policies []*ocm.PolicyBuilder) ([]string, []st
 
 			// this will never get created so the name is just a placeholder
 			tempNs := namespace.NewBuilder(HubAPIClient, "make-it-non-compliant").Definition
+			// Policy objects should include the TypeMeta to distinguish them.
+			tempNs.TypeMeta = metav1.TypeMeta{
+				Kind:       "Namespace",
+				APIVersion: "v1",
+			}
 
 			copiedConfigPolicy.Spec.ObjectTemplates = append(
 				copiedConfigPolicy.Spec.ObjectTemplates, &configurationPolicyv1.ObjectTemplate{
