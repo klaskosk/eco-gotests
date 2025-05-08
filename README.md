@@ -3,7 +3,7 @@ Ecosystem QE Golang Test Automation
 # Eco-gotests
 
 ## Overview
-The [eco-gotests](https://github.com/openshift-kni/eco-gotests) is the downstream OCP telco/Ecosystem QE framework.
+The [eco-gotests](https://github.com/rh-ecosystem-edge/eco-gotests) is the downstream OCP telco/Ecosystem QE framework.
 The project is based on golang+[ginkgo](https://onsi.github.io/ginkgo) framework.
 
 ### Project requirements
@@ -11,7 +11,7 @@ The project is based on golang+[ginkgo](https://onsi.github.io/ginkgo) framework
 * ginkgo v2.x
 
 ## eco-gotests
-The  [eco-gotests](https://github.com/openshift-kni/eco-gotests) is designed to test a pre-installed OCP cluster which meets the following requirements:
+The  [eco-gotests](https://github.com/rh-ecosystem-edge/eco-gotests) is designed to test a pre-installed OCP cluster which meets the following requirements:
 
 ### Mandatory setup requirements:
 * OCP cluster installed with version >=4.13
@@ -27,7 +27,7 @@ The  [eco-gotests](https://github.com/openshift-kni/eco-gotests) is designed to 
 * Single Node Cluster (VM or BM)
 * Public cloud (AWS)
 
-**WARNING!**: Some test suites of the [eco-gotests](https://github.com/openshift-kni/eco-gotests) framework remove existing configuration such as
+**WARNING!**: Some test suites of the [eco-gotests](https://github.com/rh-ecosystem-edge/eco-gotests) framework remove existing configuration such as
 PtpConfig, SR-IOV, SriovFecClusterConfig configs .
 
 ### General environment variables
@@ -42,7 +42,7 @@ We use glog library for logging in the project. In order to enable verbose loggi
 
 <sup>
     import (
-      . "github.com/openshift-kni/eco-gotests/tests/internal/inittools"
+      . "github.com/rh-ecosystem-edge/eco-gotests/tests/internal/inittools"
     )
 </sup>
 
@@ -53,7 +53,7 @@ We use glog library for logging in the project. In order to enable verbose loggi
 
   1. The value for the variable has to be >= 100.
   2. The variable can simply be exported in the shell where you run your automation.
-  3. The go file you work on has to be in a directory under github.com/openshift-kni/eco-gotests/tests/ directory for being able to import inittools.
+  3. The go file you work on has to be in a directory under github.com/rh-ecosystem-edge/eco-gotests/tests/ directory for being able to import inittools.
   4. Importing inittool also initializes the apiclient and it's available via "APIClient" variable.
 
 * Collect logs from cluster with reporter
@@ -69,7 +69,7 @@ In order to enable k8reporter the following needs to be done:
 
 * Generation XML reports
 
-We use reportxml library for generating compatible xml reports. 
+We use reportxml library for generating compatible xml reports.
 The reporter is enabled by default and stores reports under REPORTS_DUMP_DIR directory.
 In oder to disable reporterxml the following needs to be done:
 > export ECO_ENABLE_REPORT=false
@@ -83,7 +83,7 @@ The test-runner [script](scripts/test-runner.sh) is the recommended way for exec
 
 Parameters for the script are controlled by the following environment variables:
 - `ECO_TEST_FEATURES`: list of features to be tested ("all" will include all tests). All subdirectories under tests that match a feature will be included (internal directories are excluded) - _required_
-- `ECO_TEST_LABELS`: ginkgo query passed to the label-filter option for including/excluding tests - _optional_ 
+- `ECO_TEST_LABELS`: ginkgo query passed to the label-filter option for including/excluding tests - _optional_
 - `ECO_VERBOSE_SCRIPT`: prints verbose script information when executing the script - _optional_
 - `ECO_TEST_VERBOSE`: executes ginkgo with verbose test output - _optional_
 - `ECO_TEST_TRACE`: includes full stack trace from ginkgo tests when a failure occurs - _optional_
@@ -93,9 +93,9 @@ It is recommended to execute the runner script through the `make run-tests` make
 Example:
 ```
 $ export KUBECONFIG=/path/to/kubeconfig
-$ export ECO_TEST_FEATURES="ztp kmm" 
+$ export ECO_TEST_FEATURES="ztp kmm"
 $ export ECO_TEST_LABELS='platform-selection || image-service-statefulset'
-$ make run-tests                    
+$ make run-tests
 Executing eco-gotests test-runner script
 scripts/test-runner.sh
 ginkgo -timeout=24h --keep-going --require-suite -r --label-filter="platform-selection || image-service-statefulset" ./tests/assisted/ztp ./tests/hw-accel/kmm
@@ -105,16 +105,16 @@ ginkgo -timeout=24h --keep-going --require-suite -r --label-filter="platform-sel
 The project uses a development method - forking workflow
 ### The following is a step-by-step example of forking workflow:
 1) A developer [forks](https://docs.gitlab.com/ee/user/project/repository/forking_workflow.html#creating-a-fork)
-   the [eco-gotests](https://github.com/openshift-kni/eco-gotests) project
+   the [eco-gotests](https://github.com/rh-ecosystem-edge/eco-gotests) project
 2) A new local feature branch is created
 3) A developer makes changes on the new branch.
 4) New commits are created for the changes.
 5) The branch gets pushed to developer's own server-side copy.
 6) Changes are tested.
 7) A developer opens a pull request(`PR`) from the new branch to
-   the [eco-gotests](https://github.com/openshift-kni/eco-gotests).
+   the [eco-gotests](https://github.com/rh-ecosystem-edge/eco-gotests).
 8) The pull request gets approved from at least 2 reviewers for merge and is merged into
-   the [eco-gotests](https://github.com/openshift-kni/eco-gotests) .
+   the [eco-gotests](https://github.com/rh-ecosystem-edge/eco-gotests) .
 
 # Team Documentation
 | Name             | README                                     |
@@ -135,7 +135,7 @@ The project uses a development method - forking workflow
     │   │   └── config                     # common config struct used across framework
     │   ├── cnf                            # cnf group test folder
     │   │   ├── network                    # networking test suites directory
-    │   │   │   ├── cni                    # cni test suite directory 
+    │   │   │   ├── cni                    # cni test suite directory
     │   │   │   │   ├── internal           # internal packages used within cni test suite
     │   │   │   │   │    └── tsparams      # cni test suite constants and parameters package
     │   │   │   │   └── tests              # cni tests directory
@@ -145,15 +145,15 @@ The project uses a development method - forking workflow
     │   │   │   │        │   ├──common.go  # common sysctl ginkgo function
     │   │   │   │        │   └──e2e.go     # e2e sysctl test cases
     │   │   │   │        └── vrf           # vrf test cases
-    │   │   │   ├── dummy                  # dummy test suite directory 
-    │   │   │   └── internal               # networking internal packages 
+    │   │   │   ├── dummy                  # dummy test suite directory
+    │   │   │   └── internal               # networking internal packages
     │   │   │       └── netparam           # networking constants and parameters
-    │   │   ├── internal                   # cnf internal packages 
+    │   │   ├── internal                   # cnf internal packages
     │   │   │   └── cnfparams              # cnf constants and parameters
     │   │   └── compute                    # compute test suites folder
     │   ├── external                       # external test cases from partners
     │   └── system                         # system group test folder
-    └── vendors                            # Dependencies folder 
+    └── vendors                            # Dependencies folder
 ### Code conventions
 #### Lint
 Push requested are tested in a pipeline with golangci-lint. It is advised to add [Golangci-lint integration](https://golangci-lint.run/usage/integrations/) to your development editor. It's recommended to run `make lint` before uploading a PR.
@@ -161,8 +161,8 @@ Push requested are tested in a pipeline with golangci-lint. It is advised to add
 #### Commit Message Guidelines
 There are two main components of a Git commit message: the title or summary, and the description. The commit message title is limited to 72 characters, and the description has no character limit.
 
-Commit title format has two parts: 
-1. Team name: Example - "cnf network" or "hw-accel" 
+Commit title format has two parts:
+1. Team name: Example - "cnf network" or "hw-accel"
 2. Short summary of code changes: Example - "added deployment test".
 
 If a PR changes multiple team's directories or common infrastructure code, then instead of the team name, simply add "infra". Follow similar naming rules when adding changes to README (readme:) or github ci (ci:) files.
@@ -205,7 +205,7 @@ One more acceptable format example:
 ```go
 func Function(
     argInt1, argInt2 int, argString1, argString2 string, argSlice1, argSlice2 []string) {
-	
+
 }
 ```
 
@@ -214,9 +214,9 @@ func Function(
 
 
 ### Update eco-goinfra modules - How to:
-1. List the existing branches here: https://github.com/openshift-kni/eco-gotests/branches 
+1. List the existing branches here: https://github.com/rh-ecosystem-edge/eco-gotests/branches
 2. Delete all of the merged branches named eco-goinfra-dep-bump*
-3. In the left pane locate the "Eco-GoInfra Module Bump" action here: https://github.com/openshift-kni/eco-gotests/actions
+3. In the left pane locate the "Eco-GoInfra Module Bump" action here: https://github.com/rh-ecosystem-edge/eco-gotests/actions
 4. Click on "Run workflow" in the right pane and run the workflow against the main branch (should take less than a minute to complete)
 5. Click on the last executed workflow and expand the "Push changes to new branch" step
 6. Copy the link to create the pull request and paste it in your browser. Complete the pull request creation from your browser
