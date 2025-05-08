@@ -25,12 +25,21 @@ const (
 	OpenshiftGitOpsNamespace = "openshift-gitops"
 	// OpenshiftGitopsRepoServer ocp git repo server.
 	OpenshiftGitopsRepoServer = "openshift-gitops-repo-server"
+	// PtpOperatorNamespace is the namespace for the PTP operator.
+	PtpOperatorNamespace = "openshift-ptp"
+	// OpenshiftMonitoringNamespace is the namespace for the monitoring operator.
+	OpenshiftMonitoringNamespace = "openshift-monitoring"
+
+	// LinuxPtpDaemonsetName is the name of the linuxptp-daemon daemonset.
+	LinuxPtpDaemonsetName = "linuxptp-daemon"
 	// PtpContainerName is the name of the container in the PTP daemon pod.
 	PtpContainerName = "linuxptp-daemon-container"
 	// PtpDaemonsetLabelSelector is the label selector to find the PTP daemon pod.
 	PtpDaemonsetLabelSelector = "app=linuxptp-daemon"
+
 	// LogLevel is the verbosity for ran/internal packages.
 	LogLevel glog.Level = 80
+
 	// RetryInterval retry interval for node exec commands.
 	RetryInterval = 10 * time.Second
 	// RetryCount retry count for node exec commands.
@@ -49,6 +58,14 @@ const (
 	GitOps HubOperatorName = "openshift-gitops-operator"
 	// MCE is the name of the multicluster engine operator.
 	MCE HubOperatorName = "multicluster-engine"
+)
+
+// SpokeOperatorName represents the possible operator names that may have associated versions on a spoke cluster.
+type SpokeOperatorName string
+
+const (
+	// PTP is the name of the PTP operator.
+	PTP SpokeOperatorName = "openshift-ptp"
 )
 
 // ClusterType represents spoke cluster type.
