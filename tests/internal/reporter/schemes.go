@@ -13,14 +13,14 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/schemes/argocd/argocdoperator"
 	argocdv1alpha1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/argocd/argocdtypes/v1alpha1"
 	hiveextv1beta1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/assisted/api/hiveextension/v1beta1"
-	siteconfigv1alpha1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/siteconfig/v1alpha1"
-
 	agentinstallv1beta1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/assisted/api/v1beta1"
 	hivev1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/assisted/hive/api/v1"
 	ibiv1alpha1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/imagebasedinstall/api/hiveextensions/v1alpha1"
 	mcmv1beta1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/kmm-hub/v1beta1"
 	modulev1beta1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/kmm/v1beta1"
 	olmv1alpha1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/olm/operators/v1alpha1"
+	ptpv1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/ptp/v1"
+	siteconfigv1alpha1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/siteconfig/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	pluginv1alpha1 "github.com/openshift-kni/oran-hwmgr-plugin/api/hwmgr-plugin/v1alpha1"
 	hardwaremanagementv1alpha1 "github.com/openshift-kni/oran-o2ims/api/hardwaremanagement/v1alpha1"
@@ -70,6 +70,7 @@ var reporterSchemes = []clients.SchemeAttacher{
 	pluginv1alpha1.AddToScheme,
 	provisioningv1alpha1.AddToScheme,
 	hardwaremanagementv1alpha1.AddToScheme,
+	ptpv1.AddToScheme,
 }
 
 func setReporterSchemes(scheme *runtime.Scheme) error {
