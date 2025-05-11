@@ -89,6 +89,9 @@ linters:
             - gopkg.in/k8snetworkplumbingwg/multus-cni.v4/pkg/types
             - golang.org/x/crypto/ssh
             - github.com/klauspost/compress/zstd
+            - github.com/prometheus/client_golang
+            - github.com/prometheus/common
+            - golang.org/x/exp/constraints
           deny:
             - pkg: github.com/onsi**
     funlen:
