@@ -2,6 +2,12 @@ name: Makefile CI
 
 on:
   workflow_call:
+    inputs:
+      branch:
+        description: Branch to run on
+        required: true
+        default: main
+        type: string
 
   workflow_dispatch:
 
@@ -20,7 +26,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -36,6 +42,6 @@ jobs:
         run: ginkgo run -vv -r --dry-run ./tests/
         env:
           ECO_DRY_RUN: true
-      
+
       - name: Run unit tests
         run: make test

@@ -2,6 +2,14 @@ name: eco-goinfra integration
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      branch:
+        description: Branch to run on
+        required: true
+        default: main
+        type: string
+  push:
   pull_request:
     branches:
       - main
@@ -19,7 +27,9 @@ jobs:
       - name: Check out the eco-gotests code
         if: ${{ !contains(github.event.*.labels.*.name, 'ignore-dep-check') }}
         uses: actions/checkout@v4
-      
+        with:
+          ref: ${{ inputs.branch || github.sha }}
+
       - name: Set up Go
         if: ${{ !contains(github.event.*.labels.*.name, 'ignore-dep-check') }}
         uses: actions/setup-go@v5
@@ -32,7 +42,7 @@ jobs:
         with:
           repository: ${{ env.ECO_GOINFRA_REPO }}
           # check out the branch name that is targeted by the PR
-          ref:  ${{ github.base_ref }}
+          ref: ${{ github.base_ref }}
           path: ${{ env.ECO_GOINFRA_PATH }}
 
       # Update the go.mod file in eco-gotests to include the current eco-goinfra code
