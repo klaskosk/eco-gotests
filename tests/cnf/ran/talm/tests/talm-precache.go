@@ -256,7 +256,7 @@ var _ = Describe("TALM precache", Label(tsparams.LabelPreCacheTestCases), func()
 				By("getting PTP image used by spoke 1")
 				ptpDaemonPods, err := pod.List(
 					Spoke1APIClient,
-					RANConfig.PtpOperatorNamespace,
+					ranparam.PtpOperatorNamespace,
 					metav1.ListOptions{LabelSelector: ranparam.PtpDaemonsetLabelSelector})
 				Expect(err).ToNot(HaveOccurred(), "Failed to list PTP daemon pods on spoke 1")
 				Expect(ptpDaemonPods).ToNot(BeEmpty(), "Failed to find any PTP daemon pods on spoke 1")

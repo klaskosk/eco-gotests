@@ -35,9 +35,9 @@ type RANConfig struct {
 	StressngTestImage      string   `yaml:"stressngTestImage" envconfig:"ECO_CNF_RAN_STRESSNG_TEST_IMAGE"`
 	CnfTestImage           string   `yaml:"cnfTestImage" envconfig:"ECO_CNF_RAN_TEST_IMAGE"`
 	OcpUpgradeUpstreamURL  string   `yaml:"ocpUpgradeUpstreamUrl" envconfig:"ECO_CNF_RAN_OCP_UPGRADE_UPSTREAM_URL"`
-	PtpOperatorNamespace   string   `yaml:"ptpOperatorNamespace" envconfig:"ECO_CNF_RAN_PTP_OPERATOR_NAMESPACE"`
 	TalmPreCachePolicies   []string `yaml:"talmPreCachePolicies" envconfig:"ECO_CNF_RAN_TALM_PRECACHE_POLICIES"`
 	ZtpSiteGenerateImage   string   `yaml:"ztpSiteGenerateImage" envconfig:"ECO_CNF_RAN_ZTP_SITE_GENERATE_IMAGE"`
+	PtpEventConsumerImage  string   `yaml:"ptpEventConsumerImage" envconfig:"ECO_CNF_RAN_PTP_EVENT_CONSUMER_IMAGE"`
 	// ClusterTemplateAffix is the version-dependent affix used for naming ClusterTemplates and other O-RAN
 	// resources.
 	ClusterTemplateAffix string `envconfig:"ECO_CNF_RAN_CLUSTER_TEMPLATE_AFFIX"`
