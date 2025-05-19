@@ -25,12 +25,21 @@ const (
 	OpenshiftGitOpsNamespace = "openshift-gitops"
 	// OpenshiftGitopsRepoServer ocp git repo server.
 	OpenshiftGitopsRepoServer = "openshift-gitops-repo-server"
+	// PtpOperatorNamespace is the namespace for the PTP operator.
+	PtpOperatorNamespace = "openshift-ptp"
+	// LinuxPtpDaemonsetName is the name of the linuxptp-daemon daemonset.
+	LinuxPtpDaemonsetName = "linuxptp-daemon"
+	// OpenshiftMonitoringNamespace is the namespace for the monitoring operator.
+	OpenshiftMonitoringNamespace = "openshift-monitoring"
+
 	// PtpContainerName is the name of the container in the PTP daemon pod.
 	PtpContainerName = "linuxptp-daemon-container"
 	// PtpDaemonsetLabelSelector is the label selector to find the PTP daemon pod.
 	PtpDaemonsetLabelSelector = "app=linuxptp-daemon"
+
 	// LogLevel is the verbosity for ran/internal packages.
 	LogLevel glog.Level = 80
+
 	// RetryInterval retry interval for node exec commands.
 	RetryInterval = 10 * time.Second
 	// RetryCount retry count for node exec commands.

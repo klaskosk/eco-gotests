@@ -1209,6 +1209,30 @@ func (builder *Builder) GetFullLog(containerName string) (string, error) {
 	return logBuffer.String(), nil
 }
 
+// GetLogsWithOptions retrieves logs from a pod using the provided options. No validation is performed on the provided
+// options. The options may be nil.
+func (builder *Builder) GetLogsWithOptions(options *corev1.PodLogOptions) ([]byte, error) {
+	if valid, err := builder.validate(); !valid {
+		return nil, err
+	}
+
+	logReader, err := builder.apiClient.Pods(builder.Definition.Namespace).
+		GetLogs(builder.Definition.Name, options).
+		Stream(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+
+	defer logReader.Close()
+
+	logs, err := io.ReadAll(logReader)
+	if err != nil {
+		return nil, err
+	}
+
+	return logs, nil
+}
+
 // GetGVR returns pod's GroupVersionResource which could be used for Clean function.
 func GetGVR() schema.GroupVersionResource {
 	return schema.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
