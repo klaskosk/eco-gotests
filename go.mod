@@ -249,7 +249,10 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
+require github.com/redhat-cne/sdk-go v1.23.4
+
 require (
+	github.com/cloudevents/sdk-go/v2 v2.15.2 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 )

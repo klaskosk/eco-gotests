@@ -91,6 +91,7 @@ linters:
             - github.com/klauspost/compress/zstd
             - github.com/prometheus/client_golang
             - github.com/prometheus/common
+            - github.com/prometheus-operator/prometheus-operator
             - golang.org/x/exp/constraints
           deny:
             - pkg: github.com/onsi**
