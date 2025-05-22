@@ -5,6 +5,7 @@ import (
 	"math"
 	"strings"
 
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/ptp/internal/iface"
 	"github.com/redhat-cne/sdk-go/pkg/event"
 	eventptp "github.com/redhat-cne/sdk-go/pkg/event/ptp"
 )
@@ -209,19 +210,16 @@ func (f valueFilterOnNode) Filter(value event.DataValue) bool {
 }
 
 // valueFilterOnInterface is a filter that matches if the event is on the specified interface.
-type valueFilterOnInterface string
+type valueFilterOnInterface iface.NICName
 
 // Assert at compile time that valueFilterOnInterface implements ValueFilter.
 var _ ValueFilter = valueFilterOnInterface("")
 
-// OnInterface returns a filter that matches if the event is on the specified interface. If the interface name does not
-// end with "x", the last character is replaced with "x" to match the interface name in the event resource.
-func OnInterface(ifName string) ValueFilter {
-	if !strings.HasSuffix(ifName, "x") {
-		return valueFilterOnInterface(ifName[:len(ifName)-1] + "x")
-	}
-
-	return valueFilterOnInterface(ifName)
+// OnInterface returns a filter that matches if the event is on the specified interface. Since events are aggregated by
+// NIC name rather than interface name, the function accepts a NIC name and converts it to one if it is actually an
+// interface name.
+func OnInterface(nicName iface.NICName) ValueFilter {
+	return valueFilterOnInterface(nicName.EnsureNIC())
 }
 
 // Filter implements the ValueFilter interface. It checks if the event value resource has at least 5 fields (since the

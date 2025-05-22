@@ -16,6 +16,9 @@ import (
 // time, it uses that as the query time; otherwise, it uses the current time. It also logs any warnings returned by the
 // query.
 //
+// Type parameter V is the expected type of the query result. It is used to type the query and does not appear in the
+// result, since the result is always a model.Vector which represents samples as float64 values.
+//
 // SECURITY: This function does not perform any sort of sanitization on the query. It should only be used with trusted
 // queries.
 func ExecuteQuery[V constraints.Integer](
@@ -50,6 +53,9 @@ func ExecuteQuery[V constraints.Integer](
 
 // ExecuteQueryRange executes a Prometheus query range and returns the result as a model.Matrix. It logs any warnings
 // returned by the query.
+//
+// Type parameter V is the expected type of the query result. It is used to type the query and does not appear in the
+// result, since the result is always a model.Matrix which represents samples as float64 values.
 //
 // SECURITY: This function does not perform any sort of sanitization on the query. It should only be used with trusted
 // queries.
