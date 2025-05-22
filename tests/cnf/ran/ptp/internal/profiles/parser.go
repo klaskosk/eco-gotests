@@ -7,37 +7,42 @@ import (
 	"strings"
 
 	ptpv1 "github.com/openshift-kni/eco-goinfra/pkg/schemes/ptp/v1"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/ptp/internal/iface"
 )
 
-type parsedPtp4lConf struct {
-	sections    map[string]map[string]string
-	interfaces  map[string]PtpClockType
-	profileType PtpProfileType
+// configSections is a map of section names to their key-value pairs. It represents the format used by ptp4l and ts2phc.
+type configSections map[string]map[string]string
+
+// parsedPtpProfile holds the information from parsing the PTP profile and associated configurations.
+type parsedPtpProfile struct {
+	ptp4lSections configSections
+	interfaces    map[iface.Name]PtpClockType
+	profileType   PtpProfileType
 }
 
-// parsePtpProfile parses the ptp4l configuration file and returns a parsedPtp4lConf struct.
-// It first checks Ptp4lOpts and determines if the client flag is set.
-// If interface is set on the profile, it gets added to the ones parsed from the ptp4l configuration file.
-func parsePtpProfile(profile ptpv1.PtpProfile) (*parsedPtp4lConf, error) {
-	parsedConfig := &parsedPtp4lConf{
-		sections: make(map[string]map[string]string),
+// parsePtpProfile parses the PTP profile and the ptp4l information to get the interfaces and their types before making
+// a determination on the profile type. Maps in the parsedPtp4lConf struct are guaranteed to not be nil when returned.
+func parsePtpProfile(profile ptpv1.PtpProfile) (*parsedPtpProfile, error) {
+	parsedConfig := &parsedPtpProfile{
+		ptp4lSections: make(configSections),
 	}
 	clientFlag := hasClientFlag(profile.Ptp4lOpts)
 
 	var err error
 	if profile.Ptp4lConf != nil && *profile.Ptp4lConf != "" {
-		parsedConfig.sections, err = getSectionsFromPtp4lConf(*profile.Ptp4lConf)
+		parsedConfig.ptp4lSections, err = getSectionsFromPtp4lConf(*profile.Ptp4lConf)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get sections from ptp4lConf: %w", err)
 		}
 	}
 
-	parsedConfig.interfaces = getInterfacesFromPtp4lSections(clientFlag, parsedConfig.sections)
+	parsedConfig.interfaces = getInterfacesFromPtp4lSections(clientFlag, parsedConfig.ptp4lSections)
 
 	if profile.Interface != nil && *profile.Interface != "" {
-		// If the interface is not set in the config file, it must be client only.
-		if _, ok := parsedConfig.interfaces[*profile.Interface]; !ok {
-			parsedConfig.interfaces[*profile.Interface] = ClockTypeClient
+		ifaceName := iface.Name(*profile.Interface)
+		if _, ok := parsedConfig.interfaces[ifaceName]; !ok {
+			// If the interface is not set in the config file, it cannot be server only.
+			parsedConfig.interfaces[ifaceName] = ClockTypeClient
 		}
 	}
 
@@ -50,13 +55,10 @@ func parsePtpProfile(profile ptpv1.PtpProfile) (*parsedPtp4lConf, error) {
 }
 
 // getSectionsFromPtp4lConf parses the ptp4l configuration file and returns a map of sections and their key-value pairs.
-func getSectionsFromPtp4lConf(ptp4lConf string) (map[string]map[string]string, error) {
-	var (
-		currentSectionName string
-		currentSectionMap  map[string]string
-	)
+func getSectionsFromPtp4lConf(ptp4lConf string) (configSections, error) {
+	var currentSectionName string
 
-	sections := make(map[string]map[string]string)
+	sections := make(configSections)
 	scanner := bufio.NewScanner(strings.NewReader(ptp4lConf))
 
 	for scanner.Scan() {
@@ -69,17 +71,11 @@ func getSectionsFromPtp4lConf(ptp4lConf string) (map[string]map[string]string, e
 
 		// Lines with text between brackets are considered section names.
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") && len(line) > 2 {
-			if currentSectionName != "" {
-				sections[currentSectionName] = currentSectionMap
-			}
-
 			currentSectionName = line[1 : len(line)-1]
 
 			if _, ok := sections[currentSectionName]; !ok {
 				sections[currentSectionName] = make(map[string]string)
 			}
-
-			currentSectionMap = sections[currentSectionName]
 
 			continue
 		}
@@ -90,33 +86,29 @@ func getSectionsFromPtp4lConf(ptp4lConf string) (map[string]map[string]string, e
 		}
 
 		// This is not a section name, so it should be a key-value pair, separated by a space.
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
+		keyValue := strings.SplitN(line, " ", 2)
+		if len(keyValue) < 2 {
 			continue
 		}
 
-		key := fields[0]
-		value := strings.Join(fields[1:], " ")
-		currentSectionMap[key] = value
+		sections[currentSectionName][keyValue[0]] = keyValue[1]
 	}
 
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("error reading ptp4l configuration: %w", err)
 	}
 
-	// Add the last section if it exists.
-	if currentSectionName != "" {
-		sections[currentSectionName] = currentSectionMap
-	}
-
 	return sections, nil
 }
 
 // getInterfacesFromPtp4lSections extracts the interfaces and their clock types from the ptp4l configuration sections.
-// The provided clientFlag indicates whether the clientOnly command line flag is set in ptp4lOpts.
-func getInterfacesFromPtp4lSections(clientFlag bool, sections map[string]map[string]string) map[string]PtpClockType {
-	interfaces := make(map[string]PtpClockType)
+// The provided clientFlag indicates whether the clientOnly command line flag is set in ptp4lOpts. The returned map is
+// guaranteed to not be nil.
+func getInterfacesFromPtp4lSections(clientFlag bool, sections configSections) map[iface.Name]PtpClockType {
+	interfaces := make(map[iface.Name]PtpClockType)
 
+	// Setting clientOnly in the global section is equivalent to setting it as a command line flag, meaning all
+	// interfaces are client only.
 	if globalSection, ok := sections["global"]; ok && globalSection != nil {
 		// slaveOnly is deprecated but still used and supported by ptp4l.
 		if globalSection["clientOnly"] == "1" || globalSection["slaveOnly"] == "1" {
@@ -129,42 +121,46 @@ func getInterfacesFromPtp4lSections(clientFlag bool, sections map[string]map[str
 			continue
 		}
 
+		ifaceName := iface.Name(sectionName)
+
 		if clientFlag {
-			interfaces[sectionName] = ClockTypeClient
+			interfaces[ifaceName] = ClockTypeClient
 
 			continue
 		}
 
 		// masterOnly is deprecated but still used and supported by ptp4l, similar to slaveOnly.
 		if sectionValues["serverOnly"] == "1" || sectionValues["masterOnly"] == "1" {
-			interfaces[sectionName] = ClockTypeServer
+			interfaces[ifaceName] = ClockTypeServer
 
 			continue
 		}
 
-		interfaces[sectionName] = ClockTypeClient
+		interfaces[ifaceName] = ClockTypeClient
 	}
 
 	return interfaces
 }
 
-func determineProfileType(interfaces map[string]PtpClockType, profile ptpv1.PtpProfile) (PtpProfileType, error) {
+// determineProfileType determines the PTP profile type based on the number of interfaces and their clock types.
+// Additionally, it makes use of ts2phc settings to determine if the profile is GM or MultiNICGM. An error is returned
+// if the profile type cannot be determined.
+func determineProfileType(interfaces map[iface.Name]PtpClockType, profile ptpv1.PtpProfile) (PtpProfileType, error) {
+	// If the profile has ts2phc.master set to 1, it means there is a time source and the profile is a GM profile.
+	// If there is also ts2phc.master set to 0, it means there is another NIC acting as a time sink.
+	if profile.Ts2PhcConf != nil && strings.Contains(*profile.Ts2PhcConf, "ts2phc.master 1") {
+		if strings.Contains(*profile.Ts2PhcConf, "ts2phc.master 0") {
+			return ProfileTypeMultiNICGM, nil
+		}
+
+		return ProfileTypeGM, nil
+	}
+
 	numInterfaces := len(interfaces)
 	numClientInterfaces := 0
 	numServerInterfaces := 0
 
-	// To track the number of NICs in this profile, keep a set of NIC IDs. A NIC ID is the interface name without
-	// the last character. Since we only use this for count, no need to append an "x" to the end.
-	nicIDSet := make(map[string]struct{})
-
-	for iface, clockType := range interfaces {
-		// Although the interface should not be empty, check again to avoid a panic when indexing the string.
-		if len(iface) == 0 {
-			continue
-		}
-
-		nicIDSet[iface[:len(iface)-1]] = struct{}{}
-
+	for _, clockType := range interfaces {
 		switch clockType {
 		case ClockTypeClient:
 			numClientInterfaces++
@@ -190,12 +186,6 @@ func determineProfileType(interfaces map[string]PtpClockType, profile ptpv1.PtpP
 	// If the profile has at least two interfaces and only one client interface, return ProfileTypeBC.
 	case numInterfaces >= 2 && numClientInterfaces == 1:
 		return ProfileTypeBC, nil
-	// If the profile has one NIC and all interfaces are servers, return ProfileTypeGM.
-	case len(nicIDSet) == 1 && numServerInterfaces == numInterfaces:
-		return ProfileTypeGM, nil
-	// If the profile has multiple NICs and all interfaces are servers, return ProfileTypeMultiNICGM.
-	case len(nicIDSet) > 1 && numServerInterfaces == numInterfaces:
-		return ProfileTypeMultiNICGM, nil
 	// All other profile types are considered unsupported.
 	default:
 		return 0, fmt.Errorf("unable to determine PTP profile type based on defined rules")
