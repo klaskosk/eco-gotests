@@ -1,13 +1,5 @@
 package metrics
 
-// InterfaceClockRealtime is the name of the interface representing the realtime clock. It is a string since there is no
-// enum for interfaces.
-const InterfaceClockRealtime = "CLOCK_REALTIME"
-
-// InterfaceMaster is the name of the interface representing the master clock. It is a string since there is no enum for
-// interfaces.
-const InterfaceMaster = "master"
-
 // PtpMetricKey is an enum representing all possible keys for labels on PTP metrics.
 type PtpMetricKey string
 
@@ -29,6 +21,7 @@ type PtpMetric string
 const (
 	MetricClockState      PtpMetric = "openshift_ptp_clock_state"
 	MetricProcessStatus   PtpMetric = "openshift_ptp_process_status"
+	MetricInterfaceRole   PtpMetric = "openshift_ptp_interface_role"
 	MetricThreshold       PtpMetric = "openshift_ptp_threshold"
 	MetricNMEAStatus      PtpMetric = "openshift_ptp_nmea_status"
 	MetricHAProfileStatus PtpMetric = "openshift_ptp_ha_profile_status"
@@ -58,15 +51,41 @@ const (
 	ProcessStatusUp
 )
 
+// PtpInterfaceRole is an enum representing all possible roles of the PTP interface.
+type PtpInterfaceRole int
+
+const (
+	// InterfaceRolePassive is the role of the PTP interface when it is neither a leader nor a follower.
+	InterfaceRolePassive PtpInterfaceRole = iota
+	// InterfaceRoleFollower is the role of the PTP interface when it is receiving time from a leader clock. Also
+	// called slave.
+	InterfaceRoleFollower
+	// InterfaceRoleLeader is the role of the PTP interface when it is tranmitting time to other follower clocks.
+	// Also called master.
+	InterfaceRoleLeader
+	// InterfaceRoleFaulty is the role of the PTP interface when it is not functioning correctly.
+	InterfaceRoleFaulty
+	// InterfaceRoleUnknown means the interface role cannot be determined.
+	InterfaceRoleUnknown
+	// InterfaceRoleListening is the role of the PTP interface when it is configured as a follower but is not
+	// syncing with the PHC. This is used in the dual follower (two port OC) configuration for the second follower.
+	InterfaceRoleListening
+)
+
 // PtpThresholdType is an enum representing all possible types of PTP thresholds. It corresponds to the keys of
 // ptpv1.PtpClockThresholds.
 type PtpThresholdType string
 
-//nolint:revive // The threshold type names are self explanatory and do not need individual comments.
 const (
+	// ThresholdHoldoverTimeout is the time a clock stays in holdover before transitioning to freerun after losing
+	// connection to a time source.
 	ThresholdHoldoverTimeout PtpThresholdType = "HoldOverTimeout"
-	ThresholdMaxOffset       PtpThresholdType = "MaxOffsetThreshold"
-	ThresholdMinOffset       PtpThresholdType = "MinOffsetThreshold"
+	// ThresholdMaxOffset is the maximum offset allowed before the clock enters holdover. This is usually a positive
+	// value.
+	ThresholdMaxOffset PtpThresholdType = "MaxOffsetThreshold"
+	// ThresholdMinOffset is the minimum offset allowed before the clock enters holdover. This is usually a negative
+	// value and defaults to the negative of the max offset.
+	ThresholdMinOffset PtpThresholdType = "MinOffsetThreshold"
 )
 
 // PtpNMEAStatus is an enum representing all possible states of the PTP NMEA status. It is similar to PtpProcessStatus

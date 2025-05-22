@@ -3,6 +3,7 @@ package metrics
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/golang/glog"
@@ -21,6 +22,10 @@ const (
 
 // queryAssertOptions is a struct that holds the options for the AssertQuery function. It is unexported since the
 // QueryAssertOption functions should be used to configure it.
+//
+// Type parameter V is used for the assertFunc, which controls how the query is executed through the API and comparing
+// the actual and expected values. This function cannot be set through a public function since it is intended to be used
+// only for testing.
 type queryAssertOptions[V constraints.Integer] struct {
 	timeout        time.Duration
 	pollInterval   time.Duration
@@ -53,6 +58,8 @@ func noopQueryAssertOption[V constraints.Integer](options *queryAssertOptions[V]
 // AssertWithTimeout sets the timeout for the assertion. If the timeout is less than or equal to zero, it does nothing.
 // Similarly, the timeout cannot be set to less than the stable duration. This upholds the invariant that timeout =
 // max(timeout, stableDuration).
+//
+// Callers are recommended to elide the type parameter when using this function.
 func AssertWithTimeout[V constraints.Integer](timeout time.Duration) QueryAssertOption[V] {
 	if timeout <= 0 {
 		return noopQueryAssertOption
@@ -69,6 +76,8 @@ func AssertWithTimeout[V constraints.Integer](timeout time.Duration) QueryAssert
 
 // AssertWithPollInterval sets the poll interval for the assertion. If the poll interval is less than or equal to zero,
 // it does nothing. Note that if the poll interval is set to longer than the timeout, the assertion will only run once.
+//
+// Callers are recommended to elide the type parameter when using this function.
 func AssertWithPollInterval[V constraints.Integer](pollInterval time.Duration) QueryAssertOption[V] {
 	if pollInterval <= 0 {
 		return noopQueryAssertOption
@@ -82,6 +91,8 @@ func AssertWithPollInterval[V constraints.Integer](pollInterval time.Duration) Q
 // AssertWithStableDuration sets the stable duration for the assertion. If the stable duration is less than or equal to
 // zero, it does nothing. If the stable duration is set to longer than the timeout, the timeout is updated to be the
 // stable duration. This upholds the invariant that timeout = max(timeout, stableDuration).
+//
+// Callers are recommended to elide the type parameter when using this function.
 func AssertWithStableDuration[V constraints.Integer](stableDuration time.Duration) QueryAssertOption[V] {
 	if stableDuration <= 0 {
 		return noopQueryAssertOption
@@ -98,6 +109,8 @@ func AssertWithStableDuration[V constraints.Integer](stableDuration time.Duratio
 
 // AssertWithStartTime sets the start time for the assertion. If the start time is zero or in the future, it does
 // nothing.
+//
+// Callers are recommended to elide the type parameter when using this function.
 func AssertWithStartTime[V constraints.Integer](startTime time.Time) QueryAssertOption[V] {
 	if startTime.IsZero() {
 		return noopQueryAssertOption
@@ -124,6 +137,9 @@ func AssertWithStartTime[V constraints.Integer](startTime time.Time) QueryAssert
 // that the assertion succeeds at least once within the timeout after the start time and if stableDuration is provided,
 // the query must succeed for polls over the entire stable duration. If the assertion fails, the running stable duration
 // is reset.
+//
+// Type parameter V is the expected type of the query result, but is only used for strongly typing since both actual and
+// expected values are converted before comparison.
 //
 // SECURITY: This function does not perform any sort of sanitization on the query. It should only be used with trusted
 // queries.
@@ -289,9 +305,14 @@ func assertQueryAtTime[V constraints.Integer](
 			continue
 		}
 
-		if int64(sample.Value) != int64(expected) {
+		// Rather than truncating the value to an int64, round it to the nearest integer before converting to an
+		// int64. This is intended as a safeguard against floating point precision issues, although they should
+		// not occur in practice.
+		roundedValue := int64(math.Round(float64(sample.Value)))
+
+		if roundedValue != int64(expected) {
 			return fmt.Errorf("query assert error at time %s: expected %d, got %d\nquery: %s\nsample: %s",
-				assertTime, int64(expected), int64(sample.Value), metricQuery.String(), sample)
+				assertTime, int64(expected), roundedValue, metricQuery.String(), sample)
 		}
 	}
 

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/ptp/internal/iface"
 	prometheusv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"golang.org/x/exp/constraints"
 )
@@ -22,6 +23,8 @@ const (
 
 // MetricLabel represents the value of a label in a PromQL query. It should not be constructed directly and the zero
 // value should be ignored. No escaping is done so double quotes in values should already be escaped.
+//
+// Type parameter T is used to strongly type the value of the label, particularly for using with enums.
 type MetricLabel[T any] struct {
 	value    string
 	operator metricOperator
@@ -46,49 +49,43 @@ func (label MetricLabel[T]) ToAny() MetricLabel[any] {
 	return MetricLabel[any](label)
 }
 
-// ToInterfaceX assumes the value is an interface and converts it to be an interface ending with x replacing its last
-// character. If the value is one of the special values (InterfaceMaster or InterfaceClockRealtime) or is already an
-// interface ending with x, it returns the label as is.
-func (label MetricLabel[T]) ToInterfaceX() MetricLabel[T] {
-	if label.IsZero() {
-		return MetricLabel[T]{}
-	}
+// ensureNIC treats T as [iface.NICName] and ensures that the value is a NIC name. Since Go does not allow generic
+// specialization, this method cannot be guaranteed to be type safe at compile time. It is the caller's responsibility
+// to ensure that the type of T is actually [iface.NICName].
+func (label MetricLabel[T]) ensureNIC() MetricLabel[iface.NICName] {
+	label.value = string(iface.NICName(label.value).EnsureNIC())
 
-	if label.value == "" ||
-		label.value == InterfaceMaster || label.value == InterfaceClockRealtime ||
-		strings.HasSuffix(label.value, "x") {
-		return label
-	}
-
-	label.value = label.value[:len(label.value)-1] + "x"
-
-	return label
+	return MetricLabel[iface.NICName](label)
 }
 
-// Equals returns a MetricLabel with the value and the = operator. It is used to match the value exactly.
+// Equals returns a MetricLabel with the value and the = operator. It is used to match the value exactly. Callers are
+// recommended to elide the type parameter.
 func Equals[T any](value T) MetricLabel[T] {
 	return MetricLabel[T]{value: fmt.Sprint(value), operator: metricOperatorEquals}
 }
 
 // DoesNotEqual returns a MetricLabel with the value and the != operator. It is used to match values that are exactly
-// not equal to the value.
+// not equal to the value. Callers are recommended to elide the type parameter.
 func DoesNotEqual[T any](value T) MetricLabel[T] {
 	return MetricLabel[T]{value: fmt.Sprint(value), operator: metricOperatorDoesNotEqual}
 }
 
 // Matches returns a MetricLabel with the value and the =~ operator. It is used to match values that are regular
-// expression matches of the value.
+// expression matches of the value. Callers are recommended to elide the type parameter.
 func Matches[T any](value T) MetricLabel[T] {
 	return MetricLabel[T]{value: fmt.Sprint(value), operator: metricOperatorMatches}
 }
 
 // DoesNotMatch returns a MetricLabel with the value and the !~ operator. It is used to match values that are not
-// regular expression matches of the value.
+// regular expression matches of the value. Callers are recommended to elide the type parameter.
 func DoesNotMatch[T any](value T) MetricLabel[T] {
 	return MetricLabel[T]{value: fmt.Sprint(value), operator: metricOperatorDoesNotMatch}
 }
 
-// Excludes returns a MetricLabel that excludes values regex matching any of the provided values.
+// Excludes returns a MetricLabel that excludes values regex matching any of the provided values. Callers are
+// recommended to elide the type parameter.
+//
+// If only one value is provided, this is equivalent to [DoesNotMatch].
 func Excludes[T any](values ...T) MetricLabel[T] {
 	if len(values) == 0 {
 		return MetricLabel[T]{}
@@ -117,12 +114,17 @@ func Excludes[T any](values ...T) MetricLabel[T] {
 
 // Query is an interface that represents any query that can be converted to a MetricQuery. This allows for more specific
 // validation for queries on different metrics while providing a common way to execute them.
+//
+// The type parameter V refers to the type of the value returned by the query. It must be an integer type since all PTP
+// metrics are integers.
 type Query[V constraints.Integer] interface {
 	ToMetricQuery() MetricQuery[V]
 }
 
 // MetricQuery is a query for a specific metric. It contains the name of the metric, the range parameters (optional),
 // and the metric labels.
+//
+// Like with [Query], the type parameter V refers to the type of the value returned by the query.
 type MetricQuery[V constraints.Integer] struct {
 	// Start is the start time of the query for range queries. For instant queries, this value is ignored.
 	Start time.Time
@@ -190,20 +192,22 @@ func (query MetricQuery[V]) ToMetricQuery() MetricQuery[V] {
 // is converted to ending in x and will default to ignoring the master interface if not set.
 type ClockStateQuery struct {
 	Process   MetricLabel[PtpProcess]
-	Interface MetricLabel[string]
+	Interface MetricLabel[iface.NICName]
 	Node      MetricLabel[string]
 }
 
 // This asserts at compile time that ClockStateQuery implements the Query interface.
 var _ Query[PtpClockState] = ClockStateQuery{}
 
-// ToMetricQuery converts the ClockStateQuery to a MetricQuery. It handles the special case of the interface label being
-// converted to ending in x and defaults to ignoring the master interface if not set.
+// ToMetricQuery converts the ClockStateQuery to a MetricQuery. If the interface is not set, it will default to
+// ignoring the master interface.
 func (query ClockStateQuery) ToMetricQuery() MetricQuery[PtpClockState] {
-	ifaceLabel := query.Interface.ToInterfaceX()
+	ifaceLabel := query.Interface
 	if query.Interface.IsZero() {
-		ifaceLabel = DoesNotEqual(InterfaceMaster)
+		ifaceLabel = DoesNotEqual(iface.Master)
 	}
+
+	ifaceLabel = ifaceLabel.ensureNIC()
 
 	return MetricQuery[PtpClockState]{
 		Metric: MetricClockState,
@@ -237,6 +241,29 @@ func (query ProcessStatusQuery) ToMetricQuery() MetricQuery[PtpProcessStatus] {
 	}
 }
 
+// InterfaceRoleQuery is a query for the openshift_ptp_interface_role metric. Unlike other queries, this query does not
+// aggregate interfaces by NIC and instead uses the interface name directly.
+type InterfaceRoleQuery struct {
+	Interface MetricLabel[iface.Name]
+	Node      MetricLabel[string]
+	Process   MetricLabel[PtpProcess]
+}
+
+// This asserts at compile time that InterfaceRoleQuery implements the Query interface.
+var _ Query[PtpInterfaceRole] = InterfaceRoleQuery{}
+
+// ToMetricQuery converts the InterfaceRoleQuery to a MetricQuery to fulfill the Query interface.
+func (query InterfaceRoleQuery) ToMetricQuery() MetricQuery[PtpInterfaceRole] {
+	return MetricQuery[PtpInterfaceRole]{
+		Metric: MetricInterfaceRole,
+		Labels: map[PtpMetricKey]MetricLabel[any]{
+			KeyInterface: query.Interface.ensureNIC().ToAny(),
+			KeyNode:      query.Node.ToAny(),
+			KeyProcess:   query.Process.ToAny(),
+		},
+	}
+}
+
 // ThresholdQuery is a query for the openshift_ptp_threshold metric.
 type ThresholdQuery struct {
 	Node          MetricLabel[string]
@@ -261,7 +288,7 @@ func (query ThresholdQuery) ToMetricQuery() MetricQuery[int64] {
 
 // NMEAStatusQuery is a query for the openshift_ptp_nmea_status metric.
 type NMEAStatusQuery struct {
-	Interface MetricLabel[string]
+	Interface MetricLabel[iface.NICName]
 	Node      MetricLabel[string]
 	Process   MetricLabel[PtpProcess]
 }
@@ -274,7 +301,7 @@ func (query NMEAStatusQuery) ToMetricQuery() MetricQuery[PtpNMEAStatus] {
 	return MetricQuery[PtpNMEAStatus]{
 		Metric: MetricNMEAStatus,
 		Labels: map[PtpMetricKey]MetricLabel[any]{
-			KeyInterface: query.Interface.ToAny(),
+			KeyInterface: query.Interface.ensureNIC().ToAny(),
 			KeyNode:      query.Node.ToAny(),
 			KeyProcess:   query.Process.ToAny(),
 		},
@@ -306,7 +333,7 @@ func (query HAProfileStatusQuery) ToMetricQuery() MetricQuery[PtpHAProfileStatus
 // PPSStatusQuery is a query for the openshift_ptp_pps_status metric.
 type PPSStatusQuery struct {
 	From      MetricLabel[PtpProcess]
-	Interface MetricLabel[string]
+	Interface MetricLabel[iface.NICName]
 	Node      MetricLabel[string]
 	Process   MetricLabel[PtpProcess]
 }
@@ -320,7 +347,7 @@ func (query PPSStatusQuery) ToMetricQuery() MetricQuery[PtpPPSStatus] {
 		Metric: MetricPPSStatus,
 		Labels: map[PtpMetricKey]MetricLabel[any]{
 			KeyFrom:      query.From.ToAny(),
-			KeyInterface: query.Interface.ToAny(),
+			KeyInterface: query.Interface.ensureNIC().ToAny(),
 			KeyNode:      query.Node.ToAny(),
 			KeyProcess:   query.Process.ToAny(),
 		},
@@ -334,11 +361,12 @@ type ClockClassQuery struct {
 }
 
 // This asserts at compile time that ClockClassQuery implements the Query interface.
-var _ Query[int64] = ClockClassQuery{}
+var _ Query[uint8] = ClockClassQuery{}
 
-// ToMetricQuery converts the ClockClassQuery to a MetricQuery to fulfill the Query interface.
-func (query ClockClassQuery) ToMetricQuery() MetricQuery[int64] {
-	return MetricQuery[int64]{
+// ToMetricQuery converts the ClockClassQuery to a MetricQuery to fulfill the Query interface. Since the clock class is
+// between 0 and 255, it is stored as a uint8. No enum exists as the meaning is context dependent.
+func (query ClockClassQuery) ToMetricQuery() MetricQuery[uint8] {
+	return MetricQuery[uint8]{
 		Metric: MetricClockClass,
 		Labels: map[PtpMetricKey]MetricLabel[any]{
 			KeyNode:    query.Node.ToAny(),
