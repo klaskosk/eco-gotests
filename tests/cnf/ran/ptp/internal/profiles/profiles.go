@@ -1,15 +1,9 @@
 package profiles
 
 import (
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/ptp/internal/iface"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-// Needs/user stories:
-//
-//  - I want to be able to get all the slave interfaces of a node.
-//  - I want to be able to check if a node has X profiles of type Y.
-//  - I want to be able to get all the profiles of type X on a node.
-//  - I want to be able to get all interfaces of a profile with type/role X.
 
 // PtpProfileType enumerates the supported types of profiles.
 type PtpProfileType int
@@ -64,7 +58,7 @@ type ProfileInfo struct {
 	Reference   ProfileReference
 	// Interfaces is a map of interface names to a struct holding more detailed information. Values should never be
 	// nil.
-	Interfaces map[string]*InterfaceInfo
+	Interfaces map[iface.Name]*InterfaceInfo
 }
 
 // GetInterfacesByClockType returns a slice of InterfaceInfo pointers for each interface in the profile matching the
@@ -84,7 +78,7 @@ func (profileInfo *ProfileInfo) GetInterfacesByClockType(clockType PtpClockType)
 // InterfaceInfo contains information about the PTP clock type of an interface. In the future, it may also contain
 // information about which interface it is connected to.
 type InterfaceInfo struct {
-	Name      string
+	Name      iface.Name
 	ClockType PtpClockType
 }
 

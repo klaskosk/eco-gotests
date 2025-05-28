@@ -660,6 +660,7 @@ github.com/openshift-kni/eco-goinfra/pkg/oran/api/internal/common
 github.com/openshift-kni/eco-goinfra/pkg/oran/api/internal/provisioning
 github.com/openshift-kni/eco-goinfra/pkg/pod
 github.com/openshift-kni/eco-goinfra/pkg/proxy
+github.com/openshift-kni/eco-goinfra/pkg/ptp
 github.com/openshift-kni/eco-goinfra/pkg/rbac
 github.com/openshift-kni/eco-goinfra/pkg/reportxml
 github.com/openshift-kni/eco-goinfra/pkg/route
