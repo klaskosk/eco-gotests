@@ -29,6 +29,28 @@ var _ = BeforeSuite(func() {
 	By("checking that the spoke 1 cluster is present")
 	isSpoke1Present := rancluster.AreClustersPresent([]*clients.Settings{Spoke1APIClient})
 	Expect(isSpoke1Present).To(BeTrue(), "Spoke 1 cluster must be present for PTP tests")
+
+	// make sure we get ptp operator version in config from csv
+
+	By("deploying consumers")
+
+	// GetNicDriver gets the driver for a given interface by running cmd via a PTP pod.
+	// func GetNicDriver(ptpPod corev1.Pod, ifName string) (string, error) {
+	// 	cmd := fmt.Sprintf("ethtool -i %s | grep --color=no driver | awk '{print $2}'", ifName)
+	// 	out, err := pod.ExecCommand(helper.Apiclient, ptpPod, []string{"/bin/bash", "-c", cmd}, parameters.PtpContainerName)
+
+	// 	if nil != err {
+	// 		return "", err
+	// 	}
+
+	// 	return strings.Trim(out.String(), "\n"), nil
+	// }
+	By("increasing thresholds to 200 on mlx")
+})
+
+var _ = AfterSuite(func() {
+	By("restoring PTP configs")
+	By("removing consumers")
 })
 
 var _ = JustAfterEach(func() {
