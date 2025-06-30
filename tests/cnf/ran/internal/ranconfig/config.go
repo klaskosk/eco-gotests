@@ -56,20 +56,24 @@ type HubConfig struct {
 
 // Spoke1Config contains the configuration for the spoke 1 cluster, which should always be present.
 type Spoke1Config struct {
-	Spoke1BMC        *bmc.BMC
-	Spoke1APIClient  *clients.Settings
-	Spoke1OCPVersion string
+	Spoke1BMC       *bmc.BMC
+	Spoke1APIClient *clients.Settings
+
+	Spoke1OCPVersion       string
+	Spoke1OperatorVersions map[ranparam.SpokeOperatorName]string
+
 	// Spoke1Name is automatically updated if Spoke1Kubeconfig exists, otherwise it can be provided as an input.
 	Spoke1Name string `envconfig:"ECO_CNF_RAN_SPOKE1_NAME"`
 	// Spoke1Hostname is not automatically updated but instead used as an input for the O-RAN suite.
 	Spoke1Hostname   string `envconfig:"ECO_CNF_RAN_SPOKE1_HOSTNAME"`
 	Spoke1Kubeconfig string `envconfig:"KUBECONFIG"`
 	// Spoke1Password is the path to the admin password, saved in the O-RAN suite.
-	Spoke1Password string        `envconfig:"ECO_CNF_RAN_SPOKE1_PASSWORD"`
-	BMCUsername    string        `envconfig:"ECO_CNF_RAN_BMC_USERNAME"`
-	BMCPassword    string        `envconfig:"ECO_CNF_RAN_BMC_PASSWORD"`
-	BMCHosts       []string      `envconfig:"ECO_CNF_RAN_BMC_HOSTS"`
-	BMCTimeout     time.Duration `yaml:"bmcTimeout" envconfig:"ECO_CNF_RAN_BMC_TIMEOUT"`
+	Spoke1Password string `envconfig:"ECO_CNF_RAN_SPOKE1_PASSWORD"`
+
+	BMCUsername string        `envconfig:"ECO_CNF_RAN_BMC_USERNAME"`
+	BMCPassword string        `envconfig:"ECO_CNF_RAN_BMC_PASSWORD"`
+	BMCHosts    []string      `envconfig:"ECO_CNF_RAN_BMC_HOSTS"`
+	BMCTimeout  time.Duration `yaml:"bmcTimeout" envconfig:"ECO_CNF_RAN_BMC_TIMEOUT"`
 }
 
 // Spoke2Config contains the configuration for the spoke 2 cluster, if present.
@@ -196,6 +200,17 @@ func (ranconfig *RANConfig) newSpoke1Config(configFile string) {
 	}
 
 	glog.V(ranparam.LogLevel).Infof("Found OCP version on spoke 1: %s", ranconfig.Spoke1Config.Spoke1OCPVersion)
+
+	ranconfig.Spoke1Config.Spoke1OperatorVersions = make(map[ranparam.SpokeOperatorName]string)
+
+	ranconfig.Spoke1Config.Spoke1OperatorVersions[ranparam.PTP], err = version.GetOperatorVersionFromCsv(
+		ranconfig.Spoke1Config.Spoke1APIClient, string(ranparam.PTP), ranparam.PtpOperatorNamespace)
+	if err != nil {
+		glog.V(ranparam.LogLevel).Infof("Failed to get PTP version from spoke 1: %v", err)
+	}
+
+	glog.V(ranparam.LogLevel).Infof(
+		"Found operator versions on spoke 1: %v", ranconfig.Spoke1Config.Spoke1OperatorVersions)
 
 	if len(ranconfig.Spoke1Config.BMCHosts) > 0 &&
 		ranconfig.Spoke1Config.BMCUsername != "" &&

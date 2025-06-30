@@ -10,6 +10,7 @@ import (
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/rancluster"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/ptp/internal/consumer"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/ptp/internal/tsparams"
 	_ "github.com/openshift-kni/eco-gotests/tests/cnf/ran/ptp/tests"
 	"github.com/openshift-kni/eco-gotests/tests/internal/reporter"
@@ -30,9 +31,9 @@ var _ = BeforeSuite(func() {
 	isSpoke1Present := rancluster.AreClustersPresent([]*clients.Settings{Spoke1APIClient})
 	Expect(isSpoke1Present).To(BeTrue(), "Spoke 1 cluster must be present for PTP tests")
 
-	// make sure we get ptp operator version in config from csv
-
 	By("deploying consumers")
+	err := consumer.DeployConsumersOnWorkers(RANConfig.Spoke1APIClient)
+	Expect(err).ToNot(HaveOccurred(), "Failed to deploy consumers on workers")
 
 	// GetNicDriver gets the driver for a given interface by running cmd via a PTP pod.
 	// func GetNicDriver(ptpPod corev1.Pod, ifName string) (string, error) {
@@ -50,7 +51,10 @@ var _ = BeforeSuite(func() {
 
 var _ = AfterSuite(func() {
 	By("restoring PTP configs")
+
 	By("removing consumers")
+	err := consumer.CleanupConsumersOnWorkers(RANConfig.Spoke1APIClient)
+	Expect(err).ToNot(HaveOccurred(), "Failed to cleanup consumers on workers")
 })
 
 var _ = JustAfterEach(func() {

@@ -1,4 +1,5 @@
-// Package iface provides types and utilities for working with network interface names in the PTP test suite.
+// Package iface provides types and utilities for working with network interface names in the PTP test suite. Additional
+// helpers are provided too for working with interfaces on running nodes.
 package iface
 
 // Name represents a network interface name. It provides a number of methods for working with interface names and is the
