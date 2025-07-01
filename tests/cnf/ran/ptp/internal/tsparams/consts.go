@@ -5,6 +5,16 @@ import "github.com/golang/glog"
 const (
 	// LabelSuite is the label for all tests in the PTP suite.
 	LabelSuite = "ptp"
+	// LabelEventConsumer is the label for all tests in the PTP event consumer suite.
+	LabelEventConsumer = "event-consumer"
+	// LabelEventsAndMetrics is the label for all tests in the PTP events and metrics suite.
+	LabelEventsAndMetrics = "events-and-metrics"
+	// LabelNodeReboot is the label for all tests in the PTP node reboot suite.
+	LabelNodeReboot = "node-reboot"
+	// LabelInterfaces is the label for all tests in the PTP interfaces suite.
+	LabelInterfaces = "interfaces"
+	// LabelProcessRestart is the label for all tests in the PTP process restart suite.
+	LabelProcessRestart = "process-restart"
 
 	// CloudEventsNamespace is the namespace used for the cloud events consumer and associated resources.
 	CloudEventsNamespace = "cloud-events"

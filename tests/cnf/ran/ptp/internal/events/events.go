@@ -51,7 +51,7 @@ func WithContainer(container string) WaitForEventOption {
 // The startTime is the beginning of the time window to check for events and does not count towards the timeout. All
 // logs between startTime and the current time plus the timeout are checked for events.
 func WaitForEvent(
-	eventPod pod.Builder,
+	eventPod *pod.Builder,
 	startTime time.Time,
 	timeout time.Duration,
 	filter EventFilter,

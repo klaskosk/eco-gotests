@@ -53,7 +53,7 @@ func (nic NICName) EnsureNIC() NICName {
 
 // GroupInterfacesByNIC takes a slice of interface names and and returns a map of NIC names to slices of interface
 // names. Invalid interface names are ignored, so not all inputs will be necessarily present in the output. The returned
-// map is guaranteed to not be nil.
+// map is guaranteed to not be nil and each value is guaranteed to have a length of at least 1.
 func GroupInterfacesByNIC(ifaces []Name) map[NICName][]Name {
 	nicMap := make(map[NICName][]Name)
 

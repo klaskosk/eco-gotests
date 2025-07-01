@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	"github.com/openshift-kni/eco-goinfra/pkg/rbac"
@@ -47,7 +48,9 @@ func FindQuerierAddress(client *clients.Settings) (string, error) {
 // GetQuerierToken creates a ServiceAccount and ClusterRoleBinding to access the Thanos Querier API, then returns a
 // bearer token valid for 24 hours that can be used to access the API.
 func GetQuerierToken(client *clients.Settings) (string, error) {
-	_, err := serviceaccount.NewBuilder(client, querierServiceAccountName, openshiftMonitoringNamespace).Create()
+	// If the ServiceAccount already exists, then this is equivalent to pulling it. Likewise with the
+	// ClusterRoleBinding, these are really assertions that the ServiceAccount and ClusterRoleBinding exist.
+	saBuilder, err := serviceaccount.NewBuilder(client, querierServiceAccountName, openshiftMonitoringNamespace).Create()
 	if err != nil {
 		return "", fmt.Errorf("failed to create querier service account: %w", err)
 	}
@@ -63,7 +66,38 @@ func GetQuerierToken(client *clients.Settings) (string, error) {
 		return "", fmt.Errorf("failed to create querier cluster role binding: %w", err)
 	}
 
-	panic("todo: implement token retrieval")
+	token, err := saBuilder.CreateToken(24 * time.Hour)
+	if err != nil {
+		return "", fmt.Errorf("failed to create querier token: %w", err)
+	}
+
+	return token, nil
+}
+
+// CleanupQuerierResources deletes the querier ServiceAccount and ClusterRoleBinding that were created when getting a
+// new token. It is idempotent and will not fail if the resources do not exist.
+func CleanupQuerierResources(client *clients.Settings) error {
+	crbBuilder, err := rbac.PullClusterRoleBinding(client, querierCRBName)
+	if err != nil {
+		return fmt.Errorf("failed to pull querier cluster role binding: %w", err)
+	}
+
+	err = crbBuilder.Delete()
+	if err != nil {
+		return fmt.Errorf("failed to delete querier cluster role binding: %w", err)
+	}
+
+	saBuilder, err := serviceaccount.Pull(client, querierServiceAccountName, openshiftMonitoringNamespace)
+	if err != nil {
+		return fmt.Errorf("failed to pull querier service account: %w", err)
+	}
+
+	err = saBuilder.Delete()
+	if err != nil {
+		return fmt.Errorf("failed to delete querier service account: %w", err)
+	}
+
+	return nil
 }
 
 // CreatePrometheusAPI creates a new Prometheus API client using the given address and token. The address will use

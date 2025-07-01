@@ -1,7 +1,13 @@
 package profiles
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/openshift-kni/eco-goinfra/pkg/clients"
+	"github.com/openshift-kni/eco-goinfra/pkg/ptp"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/ptp/internal/iface"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/ptp/internal/ptpdaemon"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -51,6 +57,16 @@ type ProfileReference struct {
 	ProfileName string
 }
 
+// PullPtpConfig pulls the PTP config for the profile referenced by this struct.
+func (reference *ProfileReference) PullPtpConfig(client *clients.Settings) (*ptp.PtpConfigBuilder, error) {
+	ptpConfig, err := ptp.PullPtpConfig(client, reference.ConfigReference.Name, reference.ConfigReference.Namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get PTP config for reference %v: %w", reference, err)
+	}
+
+	return ptpConfig, nil
+}
+
 // ProfileInfo contains information about a PTP profile. Since profiles can be readily retrieved from the cluster, it
 // only contains information that must be parsed and a reference to the profile on the cluster.
 type ProfileInfo struct {
@@ -80,6 +96,17 @@ func (profileInfo *ProfileInfo) GetInterfacesByClockType(clockType PtpClockType)
 type InterfaceInfo struct {
 	Name      iface.Name
 	ClockType PtpClockType
+}
+
+// GetInterfacesNames returns a slice of interface names for the provided slice of InterfaceInfo pointers.
+func GetInterfacesNames(interfaces []*InterfaceInfo) []iface.Name {
+	names := make([]iface.Name, 0, len(interfaces))
+
+	for _, interfaceInfo := range interfaces {
+		names = append(names, interfaceInfo.Name)
+	}
+
+	return names
 }
 
 // ProfileCounts records the number of profiles of each type. It is provided as a map rather than a struct to allow
@@ -123,4 +150,35 @@ func (nodeInfo *NodeInfo) GetProfilesByType(profileType PtpProfileType) []*Profi
 	}
 
 	return nodeProfiles
+}
+
+// GetProfileByName returns the ProfileInfo for the profile with the provided name. It returns nil if no profile is
+// found.
+func (nodeInfo *NodeInfo) GetProfileByName(name string) *ProfileInfo {
+	for _, profileInfo := range nodeInfo.Profiles {
+		if profileInfo.Reference.ProfileName == name {
+			return profileInfo
+		}
+	}
+
+	return nil
+}
+
+// GetProfileByConfigPath returns the ProfileInfo for the profile with the provided config path. The config path will be
+// relative to /var/run, so it should be something like ptp4l.0.config. This function makes the assumption that the
+// first line of the file contains the profile name.
+func (nodeInfo *NodeInfo) GetProfileByConfigPath(
+	client *clients.Settings, nodeName string, path string) (*ProfileInfo, error) {
+	// The config file will begin with something like:
+	//  #profile: slave1
+	command := fmt.Sprintf("cat /var/run/%s | head -1 | cut -d' ' -f2", path)
+	output, err := ptpdaemon.ExecuteCommandInPtpDaemonPod(client, nodeName, command)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get profile by config path %s on node %s: %w", path, nodeInfo.Name, err)
+	}
+
+	profileName := strings.TrimSpace(output)
+
+	return nodeInfo.GetProfileByName(profileName), nil
 }

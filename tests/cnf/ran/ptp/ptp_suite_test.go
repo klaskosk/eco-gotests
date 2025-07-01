@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	"github.com/openshift-kni/eco-goinfra/pkg/reportxml"
+	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/querier"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/rancluster"
 	. "github.com/openshift-kni/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/ptp/internal/consumer"
@@ -34,27 +35,16 @@ var _ = BeforeSuite(func() {
 	By("deploying consumers")
 	err := consumer.DeployConsumersOnWorkers(RANConfig.Spoke1APIClient)
 	Expect(err).ToNot(HaveOccurred(), "Failed to deploy consumers on workers")
-
-	// GetNicDriver gets the driver for a given interface by running cmd via a PTP pod.
-	// func GetNicDriver(ptpPod corev1.Pod, ifName string) (string, error) {
-	// 	cmd := fmt.Sprintf("ethtool -i %s | grep --color=no driver | awk '{print $2}'", ifName)
-	// 	out, err := pod.ExecCommand(helper.Apiclient, ptpPod, []string{"/bin/bash", "-c", cmd}, parameters.PtpContainerName)
-
-	// 	if nil != err {
-	// 		return "", err
-	// 	}
-
-	// 	return strings.Trim(out.String(), "\n"), nil
-	// }
-	By("increasing thresholds to 200 on mlx")
 })
 
 var _ = AfterSuite(func() {
-	By("restoring PTP configs")
-
 	By("removing consumers")
 	err := consumer.CleanupConsumersOnWorkers(RANConfig.Spoke1APIClient)
 	Expect(err).ToNot(HaveOccurred(), "Failed to cleanup consumers on workers")
+
+	By("cleaning up Prometheus API client resources")
+	err = querier.CleanupQuerierResources(RANConfig.Spoke1APIClient)
+	Expect(err).ToNot(HaveOccurred(), "Failed to cleanup Prometheus API client resources")
 })
 
 var _ = JustAfterEach(func() {

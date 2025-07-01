@@ -231,7 +231,7 @@ func (f valueFilterOnInterface) Filter(value event.DataValue) bool {
 		return false
 	}
 
-	return resourceFields[3] == string(f)
+	return resourceFields[4] == string(f)
 }
 
 // valueFilterResourceContains is a filter that matches if the event resource contains the specified string.

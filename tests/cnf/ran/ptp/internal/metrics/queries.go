@@ -82,6 +82,36 @@ func DoesNotMatch[T any](value T) MetricLabel[T] {
 	return MetricLabel[T]{value: fmt.Sprint(value), operator: metricOperatorDoesNotMatch}
 }
 
+// Includes returns a MetricLabel that includes values regex matching any of the provided values. Callers are
+// recommended to elide the type parameter.
+//
+// If only one value is provided, this is equivalent to [Matches].
+func Includes[T any](values ...T) MetricLabel[T] {
+	if len(values) == 0 {
+		return MetricLabel[T]{}
+	}
+
+	if len(values) == 1 {
+		return Matches(values[0])
+	}
+
+	var stringBuilder strings.Builder
+
+	stringBuilder.WriteString("\"(")
+
+	for i, value := range values {
+		if i > 0 {
+			stringBuilder.WriteString("|")
+		}
+
+		stringBuilder.WriteString(fmt.Sprintf("%v", value))
+	}
+
+	stringBuilder.WriteString(")\"")
+
+	return MetricLabel[T]{value: stringBuilder.String(), operator: metricOperatorMatches}
+}
+
 // Excludes returns a MetricLabel that excludes values regex matching any of the provided values. Callers are
 // recommended to elide the type parameter.
 //
