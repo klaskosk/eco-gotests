@@ -651,7 +651,8 @@ func deleteV1PrometheusRoleBinding(client *clients.Settings) error {
 // defineConsumerContainer defines the cloud-event-consumer container. It uses the definition from
 // https://github.com/redhat-cne/cloud-event-proxy/blob/release-4.18/examples/manifests/consumer.yaml.
 func defineConsumerContainer(nodeName string) (*corev1.Container, error) {
-	container, err := pod.NewContainerBuilder("cloud-event-consumer", RANConfig.PtpEventConsumerImage, nil).
+	container, err := pod.NewContainerBuilder(
+		"cloud-event-consumer", RANConfig.PtpEventConsumerImage, []string{"./cloud-event-consumer"}).
 		WithImagePullPolicy(corev1.PullAlways).
 		WithEnvVar("NODE_NAME", nodeName).
 		WithEnvVar("CONSUMER_TYPE", "PTP").
@@ -675,7 +676,8 @@ func defineConsumerContainer(nodeName string) (*corev1.Container, error) {
 // defineSidecarContainer creates the cloud-event-sidecar container. It uses the definition from
 // https://github.com/redhat-cne/cloud-event-proxy/blob/release-4.18/examples/manifests/consumer.yaml.
 func defineSidecarContainer(nodeName string, cloudEventProxyImage string) (*corev1.Container, error) {
-	container, err := pod.NewContainerBuilder("cloud-event-sidecar", cloudEventProxyImage, nil).
+	container, err := pod.NewContainerBuilder(
+		"cloud-event-sidecar", cloudEventProxyImage, []string{"./cloud-event-sidecar"}).
 		WithImagePullPolicy(corev1.PullAlways).
 		WithEnvVar("NODE_NAME", nodeName).
 		WithPorts([]corev1.ContainerPort{{
@@ -708,7 +710,8 @@ func defineSidecarContainer(nodeName string, cloudEventProxyImage string) (*core
 // defineRBACProxyContainer creates the kube-rbac-proxy container. It uses the definition from
 // https://github.com/redhat-cne/cloud-event-proxy/blob/release-4.18/examples/manifests/consumer.yaml.
 func defineRBACProxyContainer(kubeRBACProxyImage string) (*corev1.Container, error) {
-	container, err := pod.NewContainerBuilder("kube-rbac-proxy", kubeRBACProxyImage, nil).
+	container, err := pod.NewContainerBuilder(
+		"kube-rbac-proxy", kubeRBACProxyImage, []string{"/usr/local/bin/kube-rbac-proxy"}).
 		WithPorts([]corev1.ContainerPort{{
 			Name:          "https",
 			ContainerPort: 8443,

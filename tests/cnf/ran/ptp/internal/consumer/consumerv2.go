@@ -102,7 +102,8 @@ func CleanupV2ConsumersOnWorkers(client *clients.Settings) error {
 // node selected. It uses the definition from
 // https://github.com/redhat-cne/cloud-event-proxy/blob/main/examples/manifests/consumer.yaml.
 func createV2ConsumerDeploymentOnNode(client *clients.Settings, nodeName string) error {
-	consumerContainer, err := pod.NewContainerBuilder("cloud-event-consumer", RANConfig.PtpEventConsumerImage, nil).
+	consumerContainer, err := pod.NewContainerBuilder(
+		"cloud-event-consumer", RANConfig.PtpEventConsumerImage, []string{"./cloud-event-consumer"}).
 		WithPorts([]corev1.ContainerPort{{
 			Name:          consumerPortName,
 			ContainerPort: consumerPort,
