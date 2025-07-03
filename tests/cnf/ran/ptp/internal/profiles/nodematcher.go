@@ -16,9 +16,8 @@ import (
 )
 
 // GetNodeInfoMap retrieves a map of node names to NodeInfo structs for all nodes in the cluster that have PTP profiles
-// recommended to them. The returned map is guaranteed to be non-nil if there is no error. Note that ProfileInfo is
-// unique per profile, so if it is recommended to multiple nodes, they may share the same pointer to the ProfileInfo
-// struct.
+// recommended to them. The returned map is guaranteed to be non-nil if there is no error. Each node gets its own unique
+// ProfileInfo instances, even if the same profile is recommended to multiple nodes.
 //
 // The algorithm for determining recommendations is described in the PTP operator code:
 // https://github.com/openshift/ptp-operator/blob/main/controllers/recommend.go. It assumes that profile names are
@@ -51,7 +50,7 @@ func GetNodeInfoMap(client *clients.Settings) (map[string]*NodeInfo, error) {
 		}
 
 		for reference := range recommendsForNode {
-			profileInfo, err := getMemoizedProfileInfo(reference, ptpConfigList, ptpProfileInfos)
+			profileInfo, err := getMemoizedAndClonedProfileInfo(reference, ptpConfigList, ptpProfileInfos)
 			if err != nil {
 				glog.V(tsparams.LogLevel).Infof("Failed to get profile info for reference %v: %v", reference, err)
 
@@ -164,16 +163,17 @@ func nodeMatches(node *corev1.Node, recommend ptpv1.PtpRecommend) bool {
 	return false
 }
 
-// getMemoizedProfileInfo retrieves a ProfileInfo for the given reference from the provided PTP configs. If the profile
-// has already been parsed and saved in ptpProfileInfos, it is returned directly. Otherwise, the profile is parsed from
-// the PTP config and saved in ptpProfileInfos. The returned ProfileInfo pointer is guaranteed to not be nil if there is
-// no error.
-func getMemoizedProfileInfo(
+// getMemoizedAndClonedProfileInfo retrieves a ProfileInfo for the given reference from the provided PTP configs. If the
+// profile has already been parsed and saved in ptpProfileInfos, a clone of it is returned. Otherwise, the profile is
+// parsed from the PTP config, saved in ptpProfileInfos, and a clone is returned. The returned ProfileInfo pointer is
+// guaranteed to not be nil if there is no error. Each call returns a unique ProfileInfo instance to ensure
+// modifications don't affect other nodes.
+func getMemoizedAndClonedProfileInfo(
 	reference ProfileReference,
 	allConfigs []*ptp.PtpConfigBuilder,
 	ptpProfileInfos map[ProfileReference]*ProfileInfo) (*ProfileInfo, error) {
 	if profileInfo, ok := ptpProfileInfos[reference]; ok {
-		return profileInfo, nil
+		return profileInfo.Clone(), nil
 	}
 
 	configIndex := slices.IndexFunc(allConfigs, func(config *ptp.PtpConfigBuilder) bool {
@@ -192,7 +192,7 @@ func getMemoizedProfileInfo(
 
 	ptpProfileInfos[reference] = profileInfo
 
-	return profileInfo, nil
+	return profileInfo.Clone(), nil
 }
 
 // getProfileCounts creates a ProfileCounts map from a slice of ProfileInfo pointers. It does not verify the ProfileType

@@ -68,3 +68,13 @@ func GroupInterfacesByNIC(ifaces []Name) map[NICName][]Name {
 
 	return nicMap
 }
+
+// InterfaceState represents the state of a network interface.
+type InterfaceState string
+
+const (
+	// InterfaceStateUp represents the up state of an interface.
+	InterfaceStateUp InterfaceState = "UP"
+	// InterfaceStateDown represents the down state of an interface.
+	InterfaceStateDown InterfaceState = "DOWN"
+)

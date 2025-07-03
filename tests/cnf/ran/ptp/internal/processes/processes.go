@@ -29,7 +29,7 @@ const (
 	Ts2phc PtpProcess = "ts2phc"
 )
 
-// ptpProcessRegex is a regular experssion that matches the name of any socket or config file in the ptp daemon pod. It
+// ptpProcessRegex is a regular expression that matches the name of any socket or config file in the ptp daemon pod. It
 // is setup so that the first capture group is the process name, the second is the config index, and the third is config
 // or socket.
 var ptpProcessRegex = regexp.MustCompile(`/var/run/(ptp4l|ts2phc|phc2sys)\.(\d+)\.(config|socket)`)
@@ -84,7 +84,8 @@ func WaitForProcessPID(
 // This means that in environments with only one PTP profile (and therefore only one ptp4l process), this function
 // always returns an empty slice if related is false. This is because then the processes must be related to the one
 // ptp4l process.
-func GetPtp4lPIDsByRelatedProcess(client *clients.Settings, nodeName string, relatedProcess PtpProcess, related bool) ([]string, error) {
+func GetPtp4lPIDsByRelatedProcess(
+	client *clients.Settings, nodeName string, relatedProcess PtpProcess, related bool) ([]string, error) {
 	if relatedProcess == Ptp4l {
 		return nil, fmt.Errorf("cannot get ptp4l PIDs related or not related to itself")
 	}

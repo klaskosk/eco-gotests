@@ -75,6 +75,9 @@ type ProfileInfo struct {
 	// Interfaces is a map of interface names to a struct holding more detailed information. Values should never be
 	// nil.
 	Interfaces map[iface.Name]*InterfaceInfo
+	// ConfigIndex is the number in the config file for the ptp4l corresponding to this profile. Profiles should
+	// have a ptp4l process unless they are HA.
+	ConfigIndex *uint
 }
 
 // GetInterfacesByClockType returns a slice of InterfaceInfo pointers for each interface in the profile matching the
@@ -91,11 +94,44 @@ func (profileInfo *ProfileInfo) GetInterfacesByClockType(clockType PtpClockType)
 	return interfaces
 }
 
+// Clone creates a deep copy of the ProfileInfo instance, including all nested InterfaceInfo structs. This ensures that
+// modifications to the cloned ProfileInfo do not affect the original.
+func (profileInfo *ProfileInfo) Clone() *ProfileInfo {
+	clone := &ProfileInfo{
+		ProfileType: profileInfo.ProfileType,
+		Reference:   profileInfo.Reference,
+		Interfaces:  make(map[iface.Name]*InterfaceInfo),
+	}
+
+	if profileInfo.ConfigIndex != nil {
+		clone.ConfigIndex = new(uint)
+		*clone.ConfigIndex = *profileInfo.ConfigIndex
+	}
+
+	for name, interfaceInfo := range profileInfo.Interfaces {
+		clone.Interfaces[name] = interfaceInfo.Clone()
+	}
+
+	return clone
+}
+
 // InterfaceInfo contains information about the PTP clock type of an interface. In the future, it may also contain
 // information about which interface it is connected to.
 type InterfaceInfo struct {
-	Name      iface.Name
-	ClockType PtpClockType
+	Name               iface.Name
+	ClockType          PtpClockType
+	PortIdentity       string
+	ParentPortIdentity string
+}
+
+// Clone creates a deep copy of the InterfaceInfo instance.
+func (interfaceInfo *InterfaceInfo) Clone() *InterfaceInfo {
+	return &InterfaceInfo{
+		Name:               interfaceInfo.Name,
+		ClockType:          interfaceInfo.ClockType,
+		PortIdentity:       interfaceInfo.PortIdentity,
+		ParentPortIdentity: interfaceInfo.ParentPortIdentity,
+	}
 }
 
 // GetInterfacesNames returns a slice of interface names for the provided slice of InterfaceInfo pointers.

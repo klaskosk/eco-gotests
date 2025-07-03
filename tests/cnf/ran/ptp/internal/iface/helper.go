@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/openshift-kni/eco-goinfra/pkg/clients"
 	"github.com/openshift-kni/eco-gotests/tests/cnf/ran/ptp/internal/ptpdaemon"
@@ -19,6 +20,21 @@ func GetNICDriver(client *clients.Settings, nodeName string, ifName Name) (strin
 	}
 
 	return strings.TrimSpace(output), nil
+}
+
+// GetOCPInterfaceName retrieves the name of the interface that is connected to the OCP network. Tests should avoid
+// bringing down this interface so they maintain spoke connectivity.
+func GetOCPInterfaceName(client *clients.Settings, nodeName string) (Name, error) {
+	command := "MAC=$(cat /sys/class/net/br-ex/address); ip addr | grep -B 1 ${MAC} | " +
+		"grep \" UP \" | grep -v br-ex | awk '{print $2}' | tr -d [:]"
+	output, err := ptpdaemon.ExecuteCommandInPtpDaemonPod(client, nodeName, command,
+		ptpdaemon.WithRetries(3), ptpdaemon.WithRetryOnEmptyOutput(true))
+
+	if err != nil {
+		return "", fmt.Errorf("failed to get OCP interface name for node %s: %w", nodeName, err)
+	}
+
+	return Name(strings.TrimSpace(output)), nil
 }
 
 // GetPTPHardwareClock uses ethtool to retrieve the PTP hardware clock for a given network interface on a specified
@@ -70,6 +86,30 @@ func ResetPTPHardwareClock(client *clients.Settings, nodeName string, ifName Nam
 
 	if err != nil {
 		return fmt.Errorf("failed to reset PTP hardware clock for interface %s on node %s: %w", ifName, nodeName, err)
+	}
+
+	return nil
+}
+
+// SetInterfaceStatus sets a given interface to a given state. It will wait up to 15 seconds for the interface to be in
+// the expected state after setting it.
+func SetInterfaceStatus(client *clients.Settings, nodeName string, iface Name, state InterfaceState) error {
+	command := fmt.Sprintf("ip link set %s %s", iface, state)
+	_, err := ptpdaemon.ExecuteCommandInPtpDaemonPod(client, nodeName, command,
+		ptpdaemon.WithRetries(3), ptpdaemon.WithRetryOnError(true))
+
+	if err != nil {
+		return err
+	}
+
+	// Grep will return 1 if the interface is not found, which will return an error. We retry up to 5 times with a 3
+	// second delay to wait for the interface to be up.
+	command = fmt.Sprintf("ip link show %s | grep \" state %s \"", iface, state)
+	_, err = ptpdaemon.ExecuteCommandInPtpDaemonPod(client, nodeName, command,
+		ptpdaemon.WithRetries(5), ptpdaemon.WithRetryOnError(true), ptpdaemon.WithRetryDelay(3*time.Second))
+
+	if err != nil {
+		return err
 	}
 
 	return nil
