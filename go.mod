@@ -196,9 +196,9 @@ require (
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
-	github.com/prometheus/client_golang v1.22.0 // indirect
+	github.com/prometheus/client_golang v1.22.0
 	github.com/prometheus/client_model v0.6.2 // indirect
-	github.com/prometheus/common v0.65.0 // indirect
+	github.com/prometheus/common v0.65.0
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/r3labs/diff/v3 v3.0.1 // indirect
 	github.com/red-hat-storage/odf-operator v0.0.0-20250716125006-48092cb5468b // indirect
