@@ -1010,6 +1010,9 @@ github.com/ovn-org/ovn-kubernetes/go-controller/pkg/crd/egressservice/v1
 # github.com/peterbourgon/diskv v2.0.1+incompatible
 ## explicit
 github.com/peterbourgon/diskv
+# github.com/philippgille/chromem-go v0.7.0
+## explicit; go 1.21
+github.com/philippgille/chromem-go
 # github.com/pjbgf/sha1cd v0.3.0
 ## explicit; go 1.19
 github.com/pjbgf/sha1cd

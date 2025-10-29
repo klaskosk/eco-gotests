@@ -102,6 +102,7 @@ linters:
             - golang.org/x/exp/constraints
             - github.com/redhat-cne/sdk-go
             - github.com/prometheus-operator/prometheus-operator
+            - github.com/philippgille/chromem-go
           deny:
             - pkg: github.com/onsi**
     funlen:
@@ -216,6 +217,9 @@ linters:
       - linters:
           - gochecknoinits
         path: tests/lca/imagebasedinstall/mgmt/internal/mgmtinittools
+      - linters:
+          - gochecknoinits
+        path: summaries/matcher
       - linters:
           - depguard
         path: tests/internal/inittools

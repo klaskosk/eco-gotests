@@ -1,0 +1,9 @@
+Please read the test case(s) and create a summary file for each test case. You should place the summary in the summaries/documents directory, copying summaries/TEMPLATE.md to use as the basis for your summary. Make sure you understand the functions and abstractions in the test case and describe the test case in enough detail to understand the intent and make comparisons with other summaries.
+
+Each summary file should be named like one of these two formats, depending on if there is a reportxml.ID. `subdirs_in_tests` is replaced with the path under tests/, so cnf/ran/oran becomes cnf_ran_oran, for example.
+* subdirs_in_tests_12345.md
+* subdirs_in_tests_no_id_oneworddescriptor.md
+
+When using the template, **do not** add any extra sections or deviate too much from the existing format. You may expand on your ideas, but the user has chosen this format and division of the explanation intentionally.
+
+You **should** view the definition of functions that are used in the test case and understand the details of how they work to improve the depth of your summary. Important steps inside helper functions may be included in the test summary.

@@ -284,6 +284,8 @@ require (
 
 require github.com/rh-ecosystem-edge/eco-goinfra v0.0.0-20251030121725-854236a13a18
 
+require github.com/philippgille/chromem-go v0.7.0
+
 replace (
 	github.com/imdario/mergo => github.com/imdario/mergo v0.3.16
 	github.com/k8snetworkplumbingwg/sriov-network-operator => github.com/openshift/sriov-network-operator v0.0.0-20250625093820-3b2381406672 // release-4.19
