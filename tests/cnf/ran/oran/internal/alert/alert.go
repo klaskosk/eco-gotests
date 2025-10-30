@@ -40,7 +40,7 @@ func CreatePostable(severity Severity, clusterID string) *models.PostableAlert {
 			},
 		},
 		StartsAt: strfmt.DateTime(time.Now()),
-		EndsAt:   strfmt.DateTime(time.Now().Add(10 * time.Minute)),
+		EndsAt:   strfmt.DateTime(time.Now().Add(time.Hour)),
 	}
 }
 

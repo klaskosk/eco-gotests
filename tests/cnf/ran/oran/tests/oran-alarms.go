@@ -129,9 +129,11 @@ var _ = Describe("ORAN Alarms Tests", Label(tsparams.LabelPostProvision, tsparam
 		subscription, err := alarmsClient.CreateSubscription(oranapi.AlarmSubscriptionInfo{
 			ConsumerSubscriptionId: &subscriptionID,
 			Callback:               subscriberURL + "/" + subscriptionID.String(),
-			Filter:                 ptr.To(oranapi.AlarmSubscriptionFilterACKNOWLEDGE),
 		})
 		Expect(err).ToNot(HaveOccurred(), "Failed to create test subscription")
+
+		By("waiting for the subscription to exist")
+		time.Sleep(1 * time.Minute)
 
 		By("saving the time before acknowledging the alarm")
 		timeBeforeAcknowledge := time.Now()
@@ -145,6 +147,7 @@ var _ = Describe("ORAN Alarms Tests", Label(tsparams.LabelPostProvision, tsparam
 		By("waiting for the notification")
 		err = subscriber.WaitForNotification(HubAPIClient, tsparams.SubscriberNamespace,
 			subscriber.WithStart(timeBeforeAcknowledge),
+			subscriber.WithTimeout(10*time.Minute),
 			subscriber.WithMatchFunc(func(notification *oranapi.AlarmEventNotification) bool {
 				return notification.Extensions["tracker"] == tracker &&
 					notification.NotificationEventType == oranapi.AlarmEventNotificationTypeACKNOWLEDGE
