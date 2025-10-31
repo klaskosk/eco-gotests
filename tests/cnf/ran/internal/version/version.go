@@ -160,6 +160,12 @@ func GetZTPSiteGenerateImage(client *clients.Settings) (string, error) {
 		return "", err
 	}
 
+	if gitops.Definition == nil {
+		glog.V(ranparam.LogLevel).Info("argo cd resource is nil?")
+
+		return "", errors.New("argo cd resource is nil")
+	}
+
 	for _, container := range gitops.Definition.Spec.Repo.InitContainers {
 		// Match both the `ztp-site-generator` and `ztp-site-generate` images since which one matches is version
 		// dependent.
