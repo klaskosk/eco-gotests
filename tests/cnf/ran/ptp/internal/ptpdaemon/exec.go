@@ -46,7 +46,7 @@ func WithRetryOnEmptyOutput(retryOnEmptyOutput bool) ExecCommandOption {
 	}
 }
 
-// WithRetryDelay sets the delay between retries. It defaults to 1 second.
+// WithRetryDelay sets the delay between retries. It defaults to 1 minute.
 func WithRetryDelay(retryDelay time.Duration) ExecCommandOption {
 	return func(o *execCommandOptions) {
 		o.retryDelay = retryDelay
@@ -62,7 +62,7 @@ func ExecuteCommandInPtpDaemonPod(
 		attempts:           1,
 		retryOnError:       false,
 		retryOnEmptyOutput: false,
-		retryDelay:         1 * time.Second,
+		retryDelay:         time.Minute,
 	}
 
 	for _, option := range options {

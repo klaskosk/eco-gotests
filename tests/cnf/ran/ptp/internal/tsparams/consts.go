@@ -17,6 +17,8 @@ const (
 	LabelProcessRestart = "process-restart"
 	// LabelOC2Port is the label for all tests in the PTP OC 2 port suite.
 	LabelOC2Port = "oc-two-port"
+	// LabelNTPFallback is the label for all tests in the PTP GNSS with NTP fallback suite.
+	LabelNTPFallback = "ntp-fallback"
 
 	// CloudEventsNamespace is the namespace used for the cloud events consumer and associated resources.
 	CloudEventsNamespace = "cloud-events"

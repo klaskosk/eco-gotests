@@ -92,7 +92,7 @@ func GetPtp4lPIDsByRelatedProcess(
 	getIndexCommand := fmt.Sprintf("pgrep -a %s | grep /var/run | head -n 1", relatedProcess)
 
 	output, err := ptpdaemon.ExecuteCommandInPtpDaemonPod(client, nodeName, getIndexCommand,
-		ptpdaemon.WithRetries(3), ptpdaemon.WithRetryOnEmptyOutput(true), ptpdaemon.WithRetryDelay(time.Minute))
+		ptpdaemon.WithRetries(3), ptpdaemon.WithRetryOnEmptyOutput(true))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get index for process %s: %w", relatedProcess, err)
 	}
@@ -120,7 +120,7 @@ func GetPtp4lPIDsByRelatedProcess(
 	getPIDsCommand := fmt.Sprintf("pgrep -a ptp4l | grep -E %s '%s' | cut -d' ' -f1", grepFlag, grepPattern)
 
 	output, err = ptpdaemon.ExecuteCommandInPtpDaemonPod(client, nodeName, getPIDsCommand,
-		ptpdaemon.WithRetries(3), ptpdaemon.WithRetryOnEmptyOutput(true), ptpdaemon.WithRetryDelay(time.Minute))
+		ptpdaemon.WithRetries(3), ptpdaemon.WithRetryOnEmptyOutput(true))
 	if err != nil {
 		return nil, err
 	}
@@ -168,4 +168,24 @@ func KillPtpProcessMultipleTimes(client *clients.Settings, nodeName string, proc
 	}
 
 	return nil
+}
+
+// IsProcessRunning checks if a PTP process is running on a node by executing a pgrep command in the ptp daemon pod. It
+// returns true if the process is running, false if it is not, and an error if the command fails. It will retry the
+// command up to 3 times.
+func IsProcessRunning(client *clients.Settings, nodeName string, process PtpProcess) (bool, error) {
+	const notFoundOutput = "not found"
+
+	command := fmt.Sprintf("pgrep %s || echo \"%s\"", process, notFoundOutput)
+	output, err := ptpdaemon.ExecuteCommandInPtpDaemonPod(client, nodeName, command, ptpdaemon.WithRetries(3))
+
+	if err != nil {
+		return false, fmt.Errorf("failed to check if process %s is running: %w", process, err)
+	}
+
+	if strings.Contains(output, notFoundOutput) {
+		return false, nil
+	}
+
+	return true, nil
 }
