@@ -3,6 +3,7 @@ package profiles
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/clients"
@@ -19,6 +20,35 @@ func SavePtpConfigs(client *clients.Settings) ([]*ptp.PtpConfigBuilder, error) {
 	}
 
 	return ptpConfigList, nil
+}
+
+// RestoreProfileToConfig updates the profile referenced by the provided ProfileReference with the provided profile. It
+// returns true if the profile was changed, false otherwise. It returns an error if the restore fails.
+func RestoreProfileToConfig(
+	client *clients.Settings, profileReference ProfileReference, profile *ptpv1.PtpProfile) (bool, error) {
+	ptpConfig, err := profileReference.PullPtpConfig(client)
+	if err != nil {
+		return false, fmt.Errorf("failed to pull PtpConfig for profile %s: %w", profileReference.ProfileName, err)
+	}
+
+	profileIndex := profileReference.ProfileIndex
+	if profileIndex < 0 || profileIndex >= len(ptpConfig.Definition.Spec.Profile) {
+		return false, fmt.Errorf("failed to get profile %s at index %d: index out of bounds",
+			profileReference.ProfileName, profileIndex)
+	}
+
+	if reflect.DeepEqual(ptpConfig.Definition.Spec.Profile[profileIndex], *profile) {
+		return false, nil
+	}
+
+	ptpConfig.Definition.Spec.Profile[profileIndex] = *profile
+
+	_, err = ptpConfig.Update()
+	if err != nil {
+		return false, fmt.Errorf("failed to update PtpConfig for profile %s: %w", profileReference.ProfileName, err)
+	}
+
+	return true, nil
 }
 
 // RestorePtpConfigs restores the PtpConfigs from the list to the cluster. It first checks if the PtpConfig has changed
