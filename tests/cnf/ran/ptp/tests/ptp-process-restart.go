@@ -60,7 +60,7 @@ var _ = Describe("PTP Process Restart", Label(tsparams.LabelProcessRestart), fun
 			if err != nil {
 				// Timeouts may occur if the profiles changed do not apply to all PTP nodes, so we make
 				// this non-fatal. This only happens in certain scenarios in MNO clusters.
-				glog.V(tsparams.LogLevel).Infof("Failed to wait for profile load on PTP nodes: %v", err)
+				klog.V(tsparams.LogLevel).Infof("Failed to wait for profile load on PTP nodes: %v", err)
 			}
 		}
 

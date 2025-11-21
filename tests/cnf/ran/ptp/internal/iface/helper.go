@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/clients"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/ptpdaemon"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/tsparams"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog/v2"
 )
 
 // GetNICDriver uses ethtool to retrieve the driver for a given network interface on a specified node.
@@ -129,8 +129,8 @@ var phcCtlCmpRegex = regexp.MustCompile(`offset from CLOCK_REALTIME is ([-0-9]+)
 // Note that the returned value is an offset, so it may be negative even though it is a duration.
 func GetPTPClockSystemTimeOffset(client *clients.Settings, nodeName string, ptpClockIndex int) (time.Duration, error) {
 	command := fmt.Sprintf("phc_ctl /dev/ptp%d cmp", ptpClockIndex)
-	output, err := ptpdaemon.ExecuteCommandInPtpDaemonPod(client, nodeName, command)
 
+	output, err := ptpdaemon.ExecuteCommandInPtpDaemonPod(client, nodeName, command)
 	if err != nil {
 		return 0, fmt.Errorf("failed to compare PTP clock with system clock on node %s: %w", nodeName, err)
 	}
@@ -160,7 +160,7 @@ func PollPTPClockSystemTimeOffset(
 			if err != nil {
 				// We want to be somewhat lenient with errors that could be due to network issues or
 				// other transient failures. Deviations outside the threshold are treated more harshly.
-				glog.V(tsparams.LogLevel).Infof("Failed to get PTP clock system time offset on node %s: %v", nodeName, err)
+				klog.V(tsparams.LogLevel).Infof("Failed to get PTP clock system time offset on node %s: %v", nodeName, err)
 
 				return false, nil
 			}

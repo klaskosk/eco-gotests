@@ -177,8 +177,8 @@ func IsProcessRunning(client *clients.Settings, nodeName string, process PtpProc
 	const notFoundOutput = "not found"
 
 	command := fmt.Sprintf("pgrep %s || echo \"%s\"", process, notFoundOutput)
-	output, err := ptpdaemon.ExecuteCommandInPtpDaemonPod(client, nodeName, command, ptpdaemon.WithRetries(3))
 
+	output, err := ptpdaemon.ExecuteCommandInPtpDaemonPod(client, nodeName, command, ptpdaemon.WithRetries(3))
 	if err != nil {
 		return false, fmt.Errorf("failed to check if process %s is running: %w", process, err)
 	}

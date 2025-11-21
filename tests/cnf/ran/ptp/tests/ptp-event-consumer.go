@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/golang/glog"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	prometheusv1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -24,6 +23,7 @@ import (
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/profiles"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/ptpdaemon"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/tsparams"
+	"k8s.io/klog/v2"
 )
 
 var _ = Describe("PTP Event Consumer", Label(tsparams.LabelEventConsumer), func() {
@@ -64,7 +64,7 @@ var _ = Describe("PTP Event Consumer", Label(tsparams.LabelEventConsumer), func(
 			if err != nil {
 				// Timeouts may occur if the profiles changed do not apply to all PTP nodes, so we make
 				// this non-fatal. This only happens in certain scenarios in MNO clusters.
-				glog.V(tsparams.LogLevel).Infof("Failed to wait for profile load on PTP nodes: %v", err)
+				klog.V(tsparams.LogLevel).Infof("Failed to wait for profile load on PTP nodes: %v", err)
 			}
 		}
 

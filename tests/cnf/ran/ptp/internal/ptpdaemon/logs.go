@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/clients"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/internal/ranparam"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/tsparams"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/klog/v2"
 )
 
 // LogMatcher is a function type that matches a log line. It returns true if the log line matches the criteria.
@@ -61,7 +61,7 @@ func WithStartTime(startTime time.Time) WaitForPodLogOption {
 // print a log and this option will be a no-op. It defaults to 30 seconds.
 func WithTimeout(timeout time.Duration) WaitForPodLogOption {
 	if timeout <= 0 {
-		glog.V(tsparams.LogLevel).Infof("Timeout cannot be less than or equal to zero, falling back to the default")
+		klog.V(tsparams.LogLevel).Infof("Timeout cannot be less than or equal to zero, falling back to the default")
 
 		return func(o *waitForPodLogOptions) {}
 	}
@@ -75,7 +75,7 @@ func WithTimeout(timeout time.Duration) WaitForPodLogOption {
 // and this option will be a no-op. It defaults to 1 second.
 func WithPollingInterval(interval time.Duration) WaitForPodLogOption {
 	if interval <= 0 {
-		glog.V(tsparams.LogLevel).Infof("Polling interval cannot be less than or equal to zero, falling back to the default")
+		klog.V(tsparams.LogLevel).Infof("Polling interval cannot be less than or equal to zero, falling back to the default")
 
 		return func(o *waitForPodLogOptions) {}
 	}
@@ -89,7 +89,7 @@ func WithPollingInterval(interval time.Duration) WaitForPodLogOption {
 // printed and this option will be a no-op. It defaults to a matcher that always returns false.
 func WithMatcher(matcher LogMatcher) WaitForPodLogOption {
 	if matcher == nil {
-		glog.V(tsparams.LogLevel).Infof("Matcher function cannot be nil, falling back to the default")
+		klog.V(tsparams.LogLevel).Infof("Matcher function cannot be nil, falling back to the default")
 
 		return func(o *waitForPodLogOptions) {}
 	}
@@ -137,7 +137,7 @@ func WaitForPodLog(client *clients.Settings, nodeName string, options ...WaitFor
 			// Get the PTP daemon pod on each poll to handle pod restarts.
 			daemonPod, err := GetPtpDaemonPodOnNode(client, nodeName)
 			if err != nil {
-				glog.V(tsparams.LogLevel).Infof("Failed to get PTP daemon pod on node %s: %v", nodeName, err)
+				klog.V(tsparams.LogLevel).Infof("Failed to get PTP daemon pod on node %s: %v", nodeName, err)
 
 				return false, nil
 			}
@@ -145,13 +145,13 @@ func WaitForPodLog(client *clients.Settings, nodeName string, options ...WaitFor
 			// We save the time of the next last fetch before getting the logs to avoid missing log entries
 			// between polls. Once the logs are fetched, we update the last fetch time to this time.
 			localFetchTime := time.Now()
+
 			logs, err := daemonPod.GetLogsWithOptions(&corev1.PodLogOptions{
 				SinceTime: &metav1.Time{Time: lastFetchTime},
 				Container: ranparam.PtpContainerName,
 			})
-
 			if err != nil {
-				glog.V(tsparams.LogLevel).Infof("Failed to get logs starting at %s for PTP daemon pod on node %s: %v",
+				klog.V(tsparams.LogLevel).Infof("Failed to get logs starting at %s for PTP daemon pod on node %s: %v",
 					lastFetchTime, nodeName, err)
 
 				return false, nil
@@ -163,7 +163,7 @@ func WaitForPodLog(client *clients.Settings, nodeName string, options ...WaitFor
 
 			for line := range strings.SplitSeq(string(logs), "\n") {
 				if logOptions.matcher(line) {
-					glog.V(tsparams.LogLevel).Infof("Found matching log line in PTP daemon pod on node %s: %q", nodeName, line)
+					klog.V(tsparams.LogLevel).Infof("Found matching log line in PTP daemon pod on node %s: %q", nodeName, line)
 
 					return true, nil
 				}
