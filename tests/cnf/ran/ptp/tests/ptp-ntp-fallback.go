@@ -39,7 +39,8 @@ var _ = Describe("PTP GNSS with NTP Fallback", Label(tsparams.LabelNTPFallback),
 		Expect(err).ToNot(HaveOccurred(), "Failed to create Prometheus API client")
 
 		By("ensuring clocks are locked before testing")
-		err = metrics.AssertQuery(context.TODO(), prometheusAPI, metrics.ClockStateQuery{}, metrics.ClockStateLocked,
+		clockStateQuery := metrics.ClockStateQuery{Process: metrics.DoesNotEqual(metrics.ProcessChronyd)}
+		err = metrics.AssertQuery(context.TODO(), prometheusAPI, clockStateQuery, metrics.ClockStateLocked,
 			metrics.AssertWithStableDuration(10*time.Second),
 			metrics.AssertWithTimeout(5*time.Minute))
 		Expect(err).ToNot(HaveOccurred(), "Failed to assert clock state is locked")
