@@ -42,11 +42,19 @@ func UpdateTS2PHCHoldover(
 
 	newHoldoverFlag := fmt.Sprintf("--ts2phc.holdover=%d", newHoldoverSeconds)
 
-	if pulledProfile.Ts2PhcOpts == nil {
+	switch {
+	case pulledProfile.Ts2PhcOpts == nil:
 		pulledProfile.Ts2PhcOpts = ptr.To(newHoldoverFlag)
-	} else {
+	case holdoverFlagRegexp.MatchString(*pulledProfile.Ts2PhcOpts):
 		*pulledProfile.Ts2PhcOpts = holdoverFlagRegexp.ReplaceAllString(
 			*pulledProfile.Ts2PhcOpts, newHoldoverFlag)
+	default:
+		*pulledProfile.Ts2PhcOpts += fmt.Sprintf(" %s", newHoldoverFlag)
+	}
+
+	_, err = ptpConfig.Update()
+	if err != nil {
+		return nil, fmt.Errorf("failed to update PtpConfig for profile %s: %w", profile.Reference.ProfileName, err)
 	}
 
 	return oldProfile, nil

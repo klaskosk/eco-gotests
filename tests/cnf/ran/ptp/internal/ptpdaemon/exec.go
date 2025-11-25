@@ -89,11 +89,14 @@ func ExecuteCommandInPtpDaemonPod(
 		// Otherwise, we return the error immediately since we do not retry on it.
 		output, err := daemonPod.ExecCommand([]string{"sh", "-c", command}, ranparam.PtpContainerName)
 		if execOptions.retryOnError && err != nil {
-			klog.V(tsparams.LogLevel).Infof("Failed to execute command %q in PTP daemon pod on node %s: %v",
-				command, nodeName, err)
+			klog.V(tsparams.LogLevel).Infof("Failed to execute command %q in PTP daemon pod on node %s\nerror: %v\noutput: %s",
+				command, nodeName, err, output.String())
 
 			continue
 		} else if err != nil {
+			klog.V(tsparams.LogLevel).Infof("Failed to execute command %q in PTP daemon pod on node %s\nerror: %v\noutput: %s",
+				command, nodeName, err, output.String())
+
 			return "", fmt.Errorf("failed to execute command %q in PTP daemon pod on node %s: %w", command, nodeName, err)
 		}
 
