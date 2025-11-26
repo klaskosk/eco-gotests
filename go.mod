@@ -307,6 +307,7 @@ replace (
 	github.com/openshift/assisted-service/models => github.com/openshift/assisted-service/models v0.0.0-20251027125749-4b116f46ca39 // release-4.20
 	github.com/openshift/installer => github.com/openshift/installer v0.0.0-20251118021431-5b017f5fa073 // release-4.20
 	github.com/portworx/sched-ops => github.com/portworx/sched-ops v1.20.4-rc1
+	github.com/rh-ecosystem-edge/eco-goinfra => github.com/klaskosk/eco-goinfra v0.0.0-20251126185022-31f826f53c80 // sync-oran-alarms-oapi REMOVE BEFORE MERGING
 	k8s.io/client-go => k8s.io/client-go v0.33.6
 	sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.19.7
 )
