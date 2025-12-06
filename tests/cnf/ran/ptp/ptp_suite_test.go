@@ -1,6 +1,7 @@
 package ptp
 
 import (
+	"fmt"
 	"runtime"
 	"testing"
 
@@ -8,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/clients"
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/reportxml"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/internal/nicinfo"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/internal/querier"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/internal/rancluster"
 	. "github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/internal/raninittools"
@@ -45,6 +47,13 @@ var _ = AfterSuite(func() {
 	By("cleaning up Prometheus API client resources")
 	err = querier.CleanupQuerierResources(RANConfig.Spoke1APIClient)
 	Expect(err).ToNot(HaveOccurred(), "Failed to cleanup Prometheus API client resources")
+
+	By("generating network interface information report")
+	report, err := nicinfo.GenerateReport(RANConfig.Spoke1APIClient)
+	Expect(err).ToNot(HaveOccurred(), "Failed to generate network interface information report")
+
+	// This prints the report to the console and saves it to the JUnit report when Ginkgo is running verbosely.
+	fmt.Fprintln(GinkgoWriter, report)
 })
 
 var _ = JustAfterEach(func() {
