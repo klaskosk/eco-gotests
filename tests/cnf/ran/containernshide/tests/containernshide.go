@@ -54,5 +54,7 @@ var _ = Describe("Container Namespace Hiding", Label(tsparams.LabelContainerNSHi
 			Expect(systemdInode).NotTo(Equal(crioInode),
 				"systemd and crio inodes match - namespace is not hidden on node %s", host)
 		}
+
+		Fail("Simulated failure")
 	})
 })
