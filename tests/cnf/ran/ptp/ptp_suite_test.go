@@ -63,7 +63,6 @@ var _ = AfterSuite(func() {
 	By("cleaning up Prometheus API client resources")
 	err = querier.CleanupQuerierResources(RANConfig.Spoke1APIClient)
 	Expect(err).ToNot(HaveOccurred(), "Failed to cleanup Prometheus API client resources")
-
 })
 
 var _ = JustAfterEach(func() {
