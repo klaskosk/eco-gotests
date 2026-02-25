@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -25,18 +27,23 @@ type CollectionResult struct {
 	StartedAt time.Time
 	// EndedAt is the time the collection ended.
 	EndedAt time.Time
-	// Lines is the full raw log lines that were collected.
-	Lines []string
+	// TempFilePath is the path to the temporary file containing the collected log lines, one per line. The caller
+	// is responsible for removing this file when it is no longer needed.
+	TempFilePath string
+	// CollectedLineCount is the total number of non-empty log lines written to the temp file.
+	CollectedLineCount int
 	// Errors is the errors that occurred while collecting the logs.
 	Errors []error
 }
 
 // CollectDaemonLogs collects linuxptp daemon logs for a single node for the provided duration. It polls every 10
-// seconds for the full duration. Some log lines may be duplicated, but they will never be skipped. The returned pointer
-// is non-nil if and only if error is nil.
+// seconds for the full duration. Some log lines may be duplicated, but they will never be skipped. Collected lines are
+// streamed to a temporary file to keep memory usage bounded regardless of duration. The returned pointer is non-nil if
+// and only if error is nil.
 //
 // In the returned CollectionResult, the StartedAt and EndedAt times are the time the collection process started and
-// ended, not necessarily the time the first and last log lines were collected.
+// ended, not necessarily the time the first and last log lines were collected. The caller is responsible for removing
+// CollectionResult.TempFilePath when it is no longer needed.
 func CollectDaemonLogs(client *clients.Settings, nodeName string, duration time.Duration) (*CollectionResult, error) {
 	if client == nil {
 		return nil, fmt.Errorf("cannot collect daemon logs with nil client")
@@ -50,23 +57,27 @@ func CollectDaemonLogs(client *clients.Settings, nodeName string, duration time.
 		return nil, fmt.Errorf("cannot collect daemon logs with non-positive duration: %s", duration)
 	}
 
+	tempFile, err := os.CreateTemp("", "ptp-daemon-logs-*.log")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file for daemon logs: %w", err)
+	}
+
 	startTime := time.Now()
 	lastFetchTime := startTime
 
 	result := CollectionResult{
-		NodeName:  nodeName,
-		StartedAt: startTime,
+		NodeName:     nodeName,
+		StartedAt:    startTime,
+		TempFilePath: tempFile.Name(),
 	}
 
 	var collectionErrors []error
 
-	err := wait.PollUntilContextTimeout(
+	pollErr := wait.PollUntilContextTimeout(
 		context.TODO(), 10*time.Second, duration, true, func(ctx context.Context) (bool, error) {
-			// We save the time of the next last fetch before getting the logs to avoid missing log entries,
-			// although this introduces the potential for duplicates.
 			localFetchTime := time.Now()
 
-			lines, fetchErr := collectLinesSince(client, nodeName, lastFetchTime)
+			linesWritten, fetchErr := appendLogsSince(tempFile, client, nodeName, lastFetchTime)
 			if fetchErr != nil {
 				klog.V(tsparams.LogLevel).Infof("Error collecting daemon logs from node %s: %v", nodeName, fetchErr)
 
@@ -74,16 +85,24 @@ func CollectDaemonLogs(client *clients.Settings, nodeName string, duration time.
 			} else {
 				lastFetchTime = localFetchTime
 
-				result.Lines = append(result.Lines, lines...)
+				result.CollectedLineCount += linesWritten
 			}
 
 			return false, nil
 		})
 
-	// We expect to see a context.DeadlineExceeded error since we always poll the full duration of the timeout. In
-	// practice, this means this if branch will never be reached, since the closure always returns a nil error.
-	if err != nil && !errors.Is(err, context.DeadlineExceeded) {
-		return nil, fmt.Errorf("unexpected error collecting daemon logs on node %s: %w", nodeName, err)
+	closeErr := tempFile.Close()
+
+	if pollErr != nil && !errors.Is(pollErr, context.DeadlineExceeded) {
+		_ = os.Remove(tempFile.Name())
+
+		return nil, fmt.Errorf("unexpected error collecting daemon logs on node %s: %w", nodeName, pollErr)
+	}
+
+	if closeErr != nil {
+		_ = os.Remove(tempFile.Name())
+
+		return nil, fmt.Errorf("failed to close temp file %s: %w", tempFile.Name(), closeErr)
 	}
 
 	result.EndedAt = time.Now()
@@ -92,13 +111,14 @@ func CollectDaemonLogs(client *clients.Settings, nodeName string, duration time.
 	return &result, nil
 }
 
-// collectLinesSince fetches daemon log lines produced after lastFetchTime from the PTP daemon pod on the given node. It
-// returns the lines and an error if the fetch failed.
-func collectLinesSince(
-	client *clients.Settings, nodeName string, lastFetchTime time.Time) ([]string, error) {
+// appendLogsSince fetches daemon log lines produced after lastFetchTime and appends them to dest. It returns the number
+// of non-empty lines written and any error encountered during the fetch.
+func appendLogsSince(
+	dest io.Writer, client *clients.Settings, nodeName string, lastFetchTime time.Time,
+) (int, error) {
 	daemonPod, err := ptpdaemon.GetPtpDaemonPodOnNode(client, nodeName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get PTP daemon pod on node %s: %w", nodeName, err)
+		return 0, fmt.Errorf("failed to get PTP daemon pod on node %s: %w", nodeName, err)
 	}
 
 	logs, err := daemonPod.GetLogsWithOptions(&corev1.PodLogOptions{
@@ -106,26 +126,29 @@ func collectLinesSince(
 		Container: ranparam.PtpContainerName,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get logs from node %s since %s: %w", nodeName, lastFetchTime, err)
+		return 0, fmt.Errorf("failed to get logs from node %s since %s: %w", nodeName, lastFetchTime, err)
 	}
 
-	logLines := splitAndTrimLogLines(string(logs))
-
-	return logLines, nil
+	return writeNonEmptyLines(dest, string(logs))
 }
 
-// splitAndTrimLogLines splits a raw log string on newlines and discards empty lines.
-func splitAndTrimLogLines(logs string) []string {
-	lines := strings.Split(logs, "\n")
-	filteredLines := make([]string, 0, len(lines))
+// writeNonEmptyLines splits raw on newlines, writes each non-empty line (terminated by newline) to dest, and returns
+// the count of lines written.
+func writeNonEmptyLines(dest io.Writer, raw string) (int, error) {
+	lines := strings.Split(raw, "\n")
+	written := 0
 
 	for _, line := range lines {
 		if line == "" {
 			continue
 		}
 
-		filteredLines = append(filteredLines, line)
+		if _, err := io.WriteString(dest, line+"\n"); err != nil {
+			return written, fmt.Errorf("failed to write log line to temp file: %w", err)
+		}
+
+		written++
 	}
 
-	return filteredLines
+	return written, nil
 }

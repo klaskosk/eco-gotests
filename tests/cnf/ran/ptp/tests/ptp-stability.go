@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -82,17 +83,17 @@ var _ = Describe("PTP Stability", Label(tsparams.LabelStability), func() {
 				RANConfig.Spoke1APIClient, nodeInfo.Name, RANConfig.PtpStabilityDuration)
 			Expect(err).ToNot(HaveOccurred(), "Failed to collect daemon logs on node %s", nodeInfo.Name)
 
-			By("asserting that we collected more log lines than errors on node " + nodeInfo.Name)
-			// This is a quick check to ensure the majority of log lines were collected successfully. In
-			// practice, we'd expect everything to fail or nearly nothing, so the threshold of a simple
-			// majority is sufficient.
-			Expect(len(collectionResult.Lines)).To(BeNumerically(">", len(collectionResult.Errors)),
-				"collected fewer log lines (%d) than fetch errors (%d); log collection is unreliable",
-				len(collectionResult.Lines), len(collectionResult.Errors))
+			DeferCleanup(os.Remove, collectionResult.TempFilePath)
 
-			By("parsing and analyzing collected daemon logs for node " + nodeInfo.Name)
-			parsedLogs := daemonlogs.ParseLogs(collectionResult.Lines)
-			analysisResult := stability.Analyze(parsedLogs, RANConfig.PtpStabilityThreshold)
+			By("asserting that we collected more log lines than errors on node " + nodeInfo.Name)
+			Expect(collectionResult.CollectedLineCount).To(BeNumerically(">", len(collectionResult.Errors)),
+				"collected fewer log lines (%d) than fetch errors (%d); log collection is unreliable",
+				collectionResult.CollectedLineCount, len(collectionResult.Errors))
+
+			By("analyzing collected daemon logs for node " + nodeInfo.Name)
+			analysisResult, err := stability.AnalyzeFromFile(
+				collectionResult.TempFilePath, RANConfig.PtpStabilityThreshold)
+			Expect(err).ToNot(HaveOccurred(), "Failed to analyze daemon logs for node %s", nodeInfo.Name)
 
 			AddReportEntry("ptp_stability_analysis_"+nodeInfo.Name, analysisResult.DiagnosticMessage())
 

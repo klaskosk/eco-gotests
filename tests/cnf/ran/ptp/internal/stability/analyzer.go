@@ -1,10 +1,15 @@
 package stability
 
 import (
+	"bufio"
 	"fmt"
+	"os"
+	"regexp"
 	"strings"
 
-	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/daemonlogs"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/processes"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/tsparams"
+	"k8s.io/klog/v2"
 )
 
 // DefaultOffsetThresholdAbsoluteNanoseconds is the default absolute offset threshold used by stability analysis. It is
@@ -22,9 +27,33 @@ type OffsetStatistics struct {
 	AvgAbs float64
 	// SampleCount is the number of samples used to compute the statistics.
 	SampleCount int
+
+	totalAbs float64
 }
 
-// StateTransition describes a ptp4l state change between adjacent parsed entries.
+// observe adds a new offset sample to the statistics.
+func (s *OffsetStatistics) observe(offset int64) {
+	absoluteValue := abs(offset)
+
+	if s.SampleCount == 0 {
+		s.MinAbs = absoluteValue
+		s.MaxAbs = absoluteValue
+	} else {
+		if absoluteValue < s.MinAbs {
+			s.MinAbs = absoluteValue
+		}
+
+		if absoluteValue > s.MaxAbs {
+			s.MaxAbs = absoluteValue
+		}
+	}
+
+	s.totalAbs += float64(absoluteValue)
+	s.SampleCount++
+	s.AvgAbs = s.totalAbs / float64(s.SampleCount)
+}
+
+// StateTransition describes a servo state change between adjacent parsed entries.
 type StateTransition struct {
 	// From is the servo state of the previous entry. It is the letter s followed by a number. For example, "s1"
 	// means the servo is in state 1.
@@ -36,6 +65,69 @@ type StateTransition struct {
 	Raw string
 }
 
+// ProcessResult groups per-process output fields from stability analysis.
+type ProcessResult struct {
+	// Stats is the descriptive statistics for the process's offsets.
+	Stats OffsetStatistics
+	// ThresholdViolationCount is the number of s2 entries whose absolute offset exceeds the threshold.
+	ThresholdViolationCount int
+	// StateTransitions is the servo state transitions between adjacent entries.
+	StateTransitions []StateTransition
+
+	name      string
+	pattern   *regexp.Regexp
+	threshold int64
+
+	candidateLines int
+	droppedLines   int
+
+	prevState string
+}
+
+// processEntry tries to parse a log line and updates per-process accumulators if it matches.
+func (p *ProcessResult) processEntry(line string) {
+	result := tryParseEntry(line, p.pattern)
+	if !result.Matched {
+		return
+	}
+
+	p.candidateLines++
+
+	if result.Dropped {
+		klog.V(tsparams.LogLevel).Infof("%s: dropping line with unparseable offset %q", p.name, line)
+
+		p.droppedLines++
+
+		return
+	}
+
+	p.Stats.observe(result.Entry.Offset)
+
+	if result.Entry.State == "s2" && abs(result.Entry.Offset) > p.threshold {
+		p.ThresholdViolationCount++
+	}
+
+	if p.prevState != "" && p.prevState != result.Entry.State {
+		p.StateTransitions = append(p.StateTransitions, StateTransition{
+			From: p.prevState,
+			To:   result.Entry.State,
+			Raw:  result.Entry.Raw,
+		})
+	}
+
+	p.prevState = result.Entry.State
+}
+
+// parseWarning returns a human-readable warning if any lines were dropped during parsing, or an empty string otherwise.
+func (p *ProcessResult) parseWarning() string {
+	if p.droppedLines == 0 {
+		return ""
+	}
+
+	return fmt.Sprintf("%s dropped %d/%d candidate delay lines during parsing",
+		p.name, p.droppedLines, p.candidateLines)
+}
+
 // AnalysisResult is the pass/fail decision output of stability analysis.
 type AnalysisResult struct {
 	// Passed is true if the analysis passed, false otherwise. It counts as passed if there are no failure details.
@@ -43,143 +135,170 @@ type AnalysisResult struct {
 	// Details is a list of failure detail messages. It is empty if the analysis passed.
 	Details []string
 
-	// PTP4LStats is the descriptive statistics for the ptp4l process.
-	PTP4LStats OffsetStatistics
-	// PHC2SYSStats is the descriptive statistics for the phc2sys process.
-	PHC2SYSStats OffsetStatistics
+	// PTP4L is the per-process result for ptp4l.
+	PTP4L ProcessResult
+	// PHC2SYS is the per-process result for phc2sys.
+	PHC2SYS ProcessResult
 
 	// PTP4LStartCount is the number of times the ptp4l process was started.
 	PTP4LStartCount uint
-
-	// FaultyLines is a list of lines containing the word "FAULTY".
-	FaultyLines []string
-	// TimeoutLines is a list of lines containing the word "timeout".
-	TimeoutLines []string
-	// StateTransitions is a list of servo state transitions between adjacent entries.
-	StateTransitions []StateTransition
-
-	// PTP4LThresholdViolations is a list of ptp4l log entries whose absolute offset in nanoseconds exceeds the
-	// threshold.
-	PTP4LThresholdViolations []daemonlogs.LogEntry
-	// PHC2SYSThresholdViolations is a list of phc2sys log entries whose absolute offset in nanoseconds exceeds the
-	// threshold.
-	PHC2SYSThresholdViolations []daemonlogs.LogEntry
+	// FaultyLineCount is the count of lines containing the word "FAULTY".
+	FaultyLineCount int
+	// TimeoutLineCount is the count of lines containing the word "timeout".
+	TimeoutLineCount int
 
 	// ParseWarnings is a list of warnings that occurred during parsing. These are warnings where the log lines
 	// could not be parsed into log entries.
 	ParseWarnings []string
 }
 
-// Analyze evaluates parsed daemon logs against stability policy.
-func Analyze(parsed daemonlogs.ParsedLogs, thresholdAbsoluteNanoseconds int64) AnalysisResult {
+// AnalyzeFromFile performs a single-pass streaming analysis of the daemon log file at filePath. It reads the file line
+// by line to keep memory bounded regardless of file size.
+func AnalyzeFromFile(filePath string, thresholdAbsoluteNanoseconds int64) (AnalysisResult, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return AnalysisResult{}, fmt.Errorf("failed to open log file %s: %w", filePath, err)
+	}
+	defer file.Close()
+
 	if thresholdAbsoluteNanoseconds <= 0 {
 		thresholdAbsoluteNanoseconds = DefaultOffsetThresholdAbsoluteNanoseconds
 	}
 
 	result := AnalysisResult{
-		PTP4LStats:      calculateStatisticsFromEntries(parsed.PTP4L.Entries),
-		PHC2SYSStats:    calculateStatisticsFromEntries(parsed.PHC2SYS.Entries),
-		PTP4LStartCount: parsed.PTP4LStartCount,
-		ParseWarnings:   buildParseWarnings(parsed),
+		PTP4L: ProcessResult{
+			name:      string(processes.Ptp4l),
+			pattern:   ptp4lPattern,
+			threshold: thresholdAbsoluteNanoseconds,
+		},
+		PHC2SYS: ProcessResult{
+			name:      string(processes.Phc2sys),
+			pattern:   phc2sysPattern,
+			threshold: thresholdAbsoluteNanoseconds,
+		},
 	}
 
-	result.FaultyLines = collectLinesContaining(parsed.Lines, "faulty")
-	result.TimeoutLines = collectLinesContaining(parsed.Lines, "timeout")
-	result.PTP4LThresholdViolations = findThresholdViolations(parsed.PTP4L.Entries, thresholdAbsoluteNanoseconds)
-	result.PHC2SYSThresholdViolations = findThresholdViolations(parsed.PHC2SYS.Entries, thresholdAbsoluteNanoseconds)
-	result.StateTransitions = findStateTransitions(parsed.PTP4L.Entries)
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
-	result.Details = buildFailureDetails(result)
-	result.Passed = len(result.Details) == 0
+	for scanner.Scan() {
+		result.processLine(scanner.Text())
+	}
 
-	return result
+	if err := scanner.Err(); err != nil {
+		return AnalysisResult{}, fmt.Errorf("error reading log file %s: %w", filePath, err)
+	}
+
+	result.finalize()
+
+	return result, nil
+}
+
+// processLine parses and accumulates a single log line.
+func (a *AnalysisResult) processLine(line string) {
+	if containsFaulty(line) {
+		a.FaultyLineCount++
+	}
+
+	if containsTimeout(line) {
+		a.TimeoutLineCount++
+	}
+
+	if isPTP4LStart(line) {
+		a.PTP4LStartCount++
+	}
+
+	a.PTP4L.processEntry(line)
+	a.PHC2SYS.processEntry(line)
+}
+
+// finalize processes the accumulated data and determines the pass/fail decision.
+func (a *AnalysisResult) finalize() {
+	a.ParseWarnings = a.buildParseWarnings()
+	a.Details = buildFailureDetails(*a)
+	a.Passed = len(a.Details) == 0
+}
+
+// buildParseWarnings returns human-readable warnings for any lines that were dropped during parsing.
+func (a *AnalysisResult) buildParseWarnings() []string {
+	var warnings []string
+
+	if w := a.PTP4L.parseWarning(); w != "" {
+		warnings = append(warnings, w)
+	}
+
+	if w := a.PHC2SYS.parseWarning(); w != "" {
+		warnings = append(warnings, w)
+	}
+
+	return warnings
 }
 
 // DiagnosticMessage builds a concise multi-line summary for assertions and report entries.
-func (result AnalysisResult) DiagnosticMessage() string {
+func (a AnalysisResult) DiagnosticMessage() string {
 	var builder strings.Builder
 
-	if len(result.Details) == 0 {
+	if len(a.Details) == 0 {
 		builder.WriteString("No stability anomalies detected.")
 	} else {
 		builder.WriteString("Stability anomalies detected:")
 
-		for _, detail := range result.Details {
+		for _, detail := range a.Details {
 			builder.WriteString("\n- ")
 			builder.WriteString(detail)
 		}
 	}
 
-	if len(result.ParseWarnings) > 0 {
+	if len(a.ParseWarnings) > 0 {
 		builder.WriteString("\nParse warnings:")
 
-		for _, warning := range result.ParseWarnings {
+		for _, warning := range a.ParseWarnings {
 			builder.WriteString("\n- ")
 			builder.WriteString(warning)
 		}
 	}
 
 	builder.WriteByte('\n')
-	builder.WriteString(formatStatsLine("ptp4l", result.PTP4LStats))
+	builder.WriteString(formatStatsLine("ptp4l", a.PTP4L.Stats))
 	builder.WriteByte('\n')
-	builder.WriteString(formatStatsLine("phc2sys", result.PHC2SYSStats))
-	fmt.Fprintf(&builder, "\nptp4l_start_count=%d", result.PTP4LStartCount)
+	builder.WriteString(formatStatsLine("phc2sys", a.PHC2SYS.Stats))
+	fmt.Fprintf(&builder, "\nptp4l_start_count=%d", a.PTP4LStartCount)
 
 	return builder.String()
 }
 
-// buildParseWarnings returns human-readable warnings for any lines that were dropped during parsing.
-func buildParseWarnings(parsed daemonlogs.ParsedLogs) []string {
-	var warnings []string
-
-	if parsed.PTP4L.DroppedLines > 0 {
-		warnings = append(warnings, fmt.Sprintf(
-			"ptp4l dropped %d/%d candidate delay lines during parsing",
-			parsed.PTP4L.DroppedLines, parsed.PTP4L.CandidateLines))
-	}
-
-	if parsed.PHC2SYS.DroppedLines > 0 {
-		warnings = append(warnings, fmt.Sprintf(
-			"phc2sys dropped %d/%d candidate delay lines during parsing",
-			parsed.PHC2SYS.DroppedLines, parsed.PHC2SYS.CandidateLines))
-	}
-
-	return warnings
-}
-
-// buildFailureDetails collects one detail string per stability check that failed. These are global checks based on the
-// entire analysis results.
+// buildFailureDetails collects one detail string per stability check that failed.
 func buildFailureDetails(result AnalysisResult) []string {
 	var details []string
 
-	if result.PTP4LStats.SampleCount == 0 {
+	if result.PTP4L.Stats.SampleCount == 0 {
 		details = append(details, "no ptp4l delay logs parsed")
 	}
 
-	if result.PHC2SYSStats.SampleCount == 0 {
+	if result.PHC2SYS.Stats.SampleCount == 0 {
 		details = append(details, "no phc2sys delay logs parsed")
 	}
 
-	if len(result.FaultyLines) > 0 {
-		details = append(details, fmt.Sprintf("found %d lines containing FAULTY", len(result.FaultyLines)))
+	if result.FaultyLineCount > 0 {
+		details = append(details, fmt.Sprintf("found %d lines containing FAULTY", result.FaultyLineCount))
 	}
 
-	if len(result.TimeoutLines) > 0 {
-		details = append(details, fmt.Sprintf("found %d lines containing timeout", len(result.TimeoutLines)))
+	if result.TimeoutLineCount > 0 {
+		details = append(details, fmt.Sprintf("found %d lines containing timeout", result.TimeoutLineCount))
 	}
 
-	if len(result.PTP4LThresholdViolations) > 0 {
+	if result.PTP4L.ThresholdViolationCount > 0 {
 		details = append(details,
-			fmt.Sprintf("found %d ptp4l s2 offset violations over threshold", len(result.PTP4LThresholdViolations)))
+			fmt.Sprintf("found %d ptp4l s2 offset violations over threshold", result.PTP4L.ThresholdViolationCount))
 	}
 
-	if len(result.PHC2SYSThresholdViolations) > 0 {
+	if result.PHC2SYS.ThresholdViolationCount > 0 {
 		details = append(details, fmt.Sprintf(
-			"found %d phc2sys s2 offset violations over threshold", len(result.PHC2SYSThresholdViolations)))
+			"found %d phc2sys s2 offset violations over threshold", result.PHC2SYS.ThresholdViolationCount))
 	}
 
-	if len(result.StateTransitions) > 0 {
-		details = append(details, fmt.Sprintf("found %d ptp4l state transitions", len(result.StateTransitions)))
+	if len(result.PTP4L.StateTransitions) > 0 {
+		details = append(details, fmt.Sprintf("found %d ptp4l state transitions", len(result.PTP4L.StateTransitions)))
 	}
 
 	if result.PTP4LStartCount > 1 {
@@ -187,104 +306,6 @@ func buildFailureDetails(result AnalysisResult) []string {
 	}
 
 	return details
-}
-
-// collectLinesContaining returns all lines that contain needle (case-insensitive).
-func collectLinesContaining(lines []string, needle string) []string {
-	var matches []string
-
-	lowerNeedle := strings.ToLower(needle)
-
-	for _, line := range lines {
-		if strings.Contains(strings.ToLower(line), lowerNeedle) {
-			matches = append(matches, line)
-		}
-	}
-
-	return matches
-}
-
-// findThresholdViolations returns s2 entries whose absolute offset in nanoseconds exceeds thresholdAbsoluteNanoseconds.
-func findThresholdViolations(entries []daemonlogs.LogEntry, thresholdAbsoluteNanoseconds int64) []daemonlogs.LogEntry {
-	var violations []daemonlogs.LogEntry
-
-	for _, entry := range entries {
-		if entry.State != "s2" {
-			continue
-		}
-
-		if abs(entry.Offset) > thresholdAbsoluteNanoseconds {
-			violations = append(violations, entry)
-		}
-	}
-
-	return violations
-}
-
-// findStateTransitions returns transitions where the state changed between adjacent entries.
-func findStateTransitions(entries []daemonlogs.LogEntry) []StateTransition {
-	var transitions []StateTransition
-
-	var previousState string
-
-	for _, entry := range entries {
-		if previousState != "" && previousState != entry.State {
-			transitions = append(transitions, StateTransition{
-				From: previousState,
-				To:   entry.State,
-				Raw:  entry.Raw,
-			})
-		}
-
-		previousState = entry.State
-	}
-
-	return transitions
-}
-
-// calculateStatisticsFromEntries extracts offsets from log entries and computes aggregate statistics.
-func calculateStatisticsFromEntries(entries []daemonlogs.LogEntry) OffsetStatistics {
-	values := make([]int64, 0, len(entries))
-	for _, entry := range entries {
-		values = append(values, entry.Offset)
-	}
-
-	return calculateStatistics(values)
-}
-
-// calculateStatistics computes max, min, and average absolute offset over the given values.
-func calculateStatistics(values []int64) OffsetStatistics {
-	stats := OffsetStatistics{
-		SampleCount: len(values),
-	}
-
-	if len(values) == 0 {
-		return stats
-	}
-
-	firstAbs := abs(values[0])
-	minAbs := firstAbs
-	maxAbs := firstAbs
-	totalAbs := float64(firstAbs)
-
-	for _, value := range values[1:] {
-		absoluteValue := abs(value)
-		totalAbs += float64(absoluteValue)
-
-		if absoluteValue < minAbs {
-			minAbs = absoluteValue
-		}
-
-		if absoluteValue > maxAbs {
-			maxAbs = absoluteValue
-		}
-	}
-
-	stats.AvgAbs = totalAbs / float64(len(values))
-	stats.MaxAbs = maxAbs
-	stats.MinAbs = minAbs
-
-	return stats
 }
 
 // formatStatsLine renders an OffsetStatistics value as a single key=value diagnostic line.
