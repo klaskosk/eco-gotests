@@ -79,6 +79,8 @@ var _ = Describe("PTP Events and Metrics", Label(tsparams.LabelEventsAndMetrics)
 	It("verifies all clocks are LOCKED", reportxml.ID("82480"), func() {
 		By("ensuring all clocks on all nodes are LOCKED")
 
+		Fail("Failed to assert clock state is locked after 5 minutes")
+
 		err := metrics.EnsureClocksAreLocked(prometheusAPI)
 		Expect(err).ToNot(HaveOccurred(), "Failed to assert clock state is locked after 5 minutes")
 	})
