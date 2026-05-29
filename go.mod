@@ -306,6 +306,8 @@ replace (
 	github.com/openshift/assisted-service/models => github.com/openshift/assisted-service/models v0.0.0-20260204223219-1574e1fa7ee0 // release-4.21
 	github.com/openshift/installer => github.com/openshift/installer v0.0.0-20260211082425-e973ac44d688 // release-4.21
 	github.com/portworx/sched-ops => github.com/portworx/sched-ops v1.20.4-rc1
+	// DO NOT MERGE
+	github.com/rh-ecosystem-edge/eco-goinfra => github.com/klaskosk/eco-goinfra v0.0.0-20260528210341-f733e50bac28
 	k8s.io/client-go => k8s.io/client-go v0.34.5
 	// The cluster-node-tuning-operator release-4.21 uses version k8s.io/kube-openapi v0.34.2, which does not exist.
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20260127142750-a19766b6e2d4
