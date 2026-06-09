@@ -15,7 +15,9 @@ import (
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/internal/querier"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/internal/rancluster"
 	. "github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/internal/raninittools"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/internal/ranparam"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/consumer"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/iface"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/metrics"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/mustgather"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/tsparams"
@@ -53,6 +55,11 @@ var _ = BeforeSuite(func() {
 
 	err = metrics.EnsureClocksAreLocked(prometheusAPI)
 	Expect(err).ToNot(HaveOccurred(), "Failed to assert clock state is locked")
+
+	By("initializing the NIC naming system based on the PTP version")
+
+	err = iface.InitNICNaming(RANConfig.Spoke1OperatorVersions[ranparam.PTP])
+	Expect(err).ToNot(HaveOccurred(), "Failed to initialize NIC naming system based on the PTP version")
 
 	By("updating the PTP ServiceMonitor scrape interval to 1s")
 
