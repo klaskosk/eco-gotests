@@ -11,6 +11,7 @@ import (
 	ptpv1 "github.com/rh-ecosystem-edge/eco-goinfra/pkg/schemes/ptp/v1"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/ptp/internal/tsparams"
 	"golang.org/x/exp/constraints"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/klog/v2"
 )
 
@@ -129,8 +130,41 @@ func AssertWithStartTime(startTime time.Time) QueryAssertOption {
 // queries.
 func AssertQuery[V constraints.Integer](
 	ctx context.Context, client prometheusv1.API, query Query[V], expected V, options ...QueryAssertOption) error {
+	return AssertQueries(ctx, client, []QueryAssertion{ExpectQuery(query, expected)}, options...)
+}
+
+// QueryAssertion is a struct that holds a query and expected value for an assertion. It should only be constructed
+// using [ExpectQuery] to provide type safety.
+type QueryAssertion struct {
+	// query is the query to execute. It is stored as a MetricQuery[int64] as a form of type erasure to allow
+	// storing multiple QueryAssertions in a collection without worrying about type parameters.
+	//
+	// Since the types are purely for static validation and the queries always return int64 values, this type
+	// erasure is safe, provided the QueryAssertion validates at construction.
+	query    MetricQuery[int64]
+	expected int64
+}
+
+// ExpectQuery creates a QueryAssertion for a query and expected value. It enforces that the expected value is the same
+// type as the query result.
+func ExpectQuery[V constraints.Integer](query Query[V], expected V) QueryAssertion {
+	return QueryAssertion{
+		// Since MetricQuery does not use the type parameter in its definition, we can freely convert
+		// MetricQuery[V] to MetricQuery[int64].
+		query:    MetricQuery[int64](query.ToMetricQuery()),
+		expected: int64(expected),
+	}
+}
+
+// AssertQueries executes multiple queries in parallel.
+func AssertQueries(
+	ctx context.Context, client prometheusv1.API, queries []QueryAssertion, options ...QueryAssertOption) error {
 	if client == nil {
-		return fmt.Errorf("cannot assert query with nil client")
+		return fmt.Errorf("cannot assert queries with nil client")
+	}
+
+	if len(queries) == 0 {
+		return fmt.Errorf("cannot assert queries with no queries")
 	}
 
 	opts := newQueryAssertOptions()
@@ -158,10 +192,17 @@ func AssertQuery[V constraints.Integer](
 		// Wait until the queryTime is no longer in the future. If the queryTime is in the past, it is executed
 		// immediately.
 		case <-time.After(time.Until(queryTime)):
-			// Actually execute the query at the queryTime. Since the metrics are saved to Prometheus, the
-			// queryTime is allowed to be in the past and in fact always should be to avoid it being in the
-			// future.
-			err := assertQueryAtTime(ctx, client, query, expected, queryTime)
+			errGroup, errCtx := errgroup.WithContext(ctx)
+
+			for _, query := range queries {
+				errGroup.Go(func() error {
+					return assertQueryAtTime(errCtx, client, query.query, query.expected, queryTime)
+				})
+			}
+
+			// note that this returns only the first non-nil error, if any
+			err := errGroup.Wait()
+
 			// If the query succeeds and there is no stable duration, or the query has been stable for the
 			// stable duration, return nil. This indicates the assertion has succeeded.
 			if err == nil && (opts.stableDuration == 0 || queryTime.Sub(stableTime) >= opts.stableDuration) {
@@ -185,11 +226,11 @@ func AssertQuery[V constraints.Integer](
 		// If the context is done, return an error and consider the assertion to have failed. This allows the
 		// caller to cancel or set their own timeout.
 		case <-ctx.Done():
-			return fmt.Errorf("failed to assert query eventually: context finished: %w", ctx.Err())
+			return fmt.Errorf("failed to assert queries eventually: context finished: %w", ctx.Err())
 		}
 	}
 
-	return fmt.Errorf("failed to assert query eventually: timeout of %s exceeded", opts.timeout)
+	return fmt.Errorf("failed to assert queries eventually: timeout of %s exceeded", opts.timeout)
 }
 
 // AssertThresholdsOption configures optional behavior for [AssertThresholds].
