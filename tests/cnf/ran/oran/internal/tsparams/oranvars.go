@@ -37,6 +37,9 @@ var (
 		{Cr: &hardwaremanagementv1alpha1.AllocatedNodeList{}},
 		{Cr: &hardwaremanagementv1alpha1.NodeAllocationRequestList{}},
 		{Cr: &inventoryv1alpha1.InventoryList{}},
+		{Cr: &inventoryv1alpha1.LocationList{}},
+		{Cr: &inventoryv1alpha1.OCloudSiteList{}},
+		{Cr: &inventoryv1alpha1.ResourcePoolList{}},
 		{Cr: &policiesv1.PolicyList{}},
 		{Cr: &siteconfigv1alpha1.ClusterInstanceList{}},
 	}

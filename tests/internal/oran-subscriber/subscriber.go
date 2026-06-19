@@ -236,6 +236,124 @@ func WithMatchFunc(matchFunc func(notification *oranapi.AlarmEventNotification) 
 	}
 }
 
+// WaitForInventoryNotification waits for an inventory change notification to be received from the subscriber.
+func WaitForInventoryNotification(
+	client *clients.Settings, namespace string, options ...waitForInventoryNotificationOption) error {
+	appliedOptions := getDefaultWaitForInventoryNotificationOptions()
+
+	for _, option := range options {
+		option(appliedOptions)
+	}
+
+	pod, err := PullPod(client, namespace)
+	if err != nil {
+		return fmt.Errorf("failed to pull subscriber pod: %w", err)
+	}
+
+	return wait.PollUntilContextTimeout(
+		context.TODO(), time.Second, appliedOptions.timeout, true, func(ctx context.Context) (bool, error) {
+			newStart := time.Now()
+
+			notificationsRaw, err := pod.GetLogsWithOptions(&corev1.PodLogOptions{
+				SinceTime: &metav1.Time{Time: appliedOptions.start},
+			})
+			if err != nil {
+				return false, fmt.Errorf("failed to get subscriber pod logs: %w", err)
+			}
+
+			appliedOptions.start = newStart
+
+			parsedNotifications, err := parseInventoryNotifications(notificationsRaw)
+			if err != nil {
+				return false, fmt.Errorf("failed to parse inventory notifications: %w", err)
+			}
+
+			return slices.ContainsFunc(parsedNotifications, appliedOptions.matchFunc), nil
+		})
+}
+
+type waitForInventoryNotificationOptions struct {
+	timeout   time.Duration
+	start     time.Time
+	matchFunc func(notification *oranapi.InventoryChangeNotification) bool
+}
+
+func getDefaultWaitForInventoryNotificationOptions() *waitForInventoryNotificationOptions {
+	return &waitForInventoryNotificationOptions{
+		timeout: time.Second * 30,
+		start:   time.Now(),
+		matchFunc: func(notification *oranapi.InventoryChangeNotification) bool {
+			return notification != nil
+		},
+	}
+}
+
+type waitForInventoryNotificationOption func(options *waitForInventoryNotificationOptions)
+
+// WithInventoryTimeout sets the timeout for waiting for an inventory notification.
+func WithInventoryTimeout(timeout time.Duration) waitForInventoryNotificationOption {
+	return func(options *waitForInventoryNotificationOptions) {
+		options.timeout = timeout
+	}
+}
+
+// WithInventoryStart sets the start time for waiting for an inventory notification.
+func WithInventoryStart(start time.Time) waitForInventoryNotificationOption {
+	return func(options *waitForInventoryNotificationOptions) {
+		options.start = start
+	}
+}
+
+// WithInventoryMatchFunc sets the match function for waiting for an inventory notification.
+func WithInventoryMatchFunc(
+	matchFunc func(notification *oranapi.InventoryChangeNotification) bool) waitForInventoryNotificationOption {
+	return func(options *waitForInventoryNotificationOptions) {
+		options.matchFunc = matchFunc
+	}
+}
+
+// parseInventoryNotifications parses inventory change notifications from subscriber pod logs.
+func parseInventoryNotifications(notificationsRaw []byte) ([]*oranapi.InventoryChangeNotification, error) {
+	var notifications []*oranapi.InventoryChangeNotification
+
+	scanner := bufio.NewScanner(bytes.NewReader(notificationsRaw))
+	for scanner.Scan() {
+		line := scanner.Bytes()
+
+		jsonStart := bytes.IndexByte(line, '{')
+		if jsonStart == -1 {
+			continue
+		}
+
+		var raw map[string]json.RawMessage
+
+		err := json.Unmarshal(line[jsonStart:], &raw)
+		if err != nil {
+			continue
+		}
+
+		if _, ok := raw["notificationEventType"]; !ok {
+			continue
+		}
+
+		var notification oranapi.InventoryChangeNotification
+
+		err = json.Unmarshal(line[jsonStart:], &notification)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal inventory notification from line %q: %w", string(line), err)
+		}
+
+		notifications = append(notifications, &notification)
+	}
+
+	err := scanner.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error scanning inventory notifications: %w", err)
+	}
+
+	return notifications, nil
+}
+
 // WaitForNotification waits for a notification to be received from the subscriber. Callers may provide options,
 // otherwise the defaults of 30 seconds timeout, start time of now, and a match function that returns true if any
 // notification is received will be used.

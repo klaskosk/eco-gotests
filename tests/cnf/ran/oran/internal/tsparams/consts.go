@@ -16,6 +16,8 @@ const (
 	LabelTemplateInventory = "template-inventory"
 	// LabelAlarms is the label applied to just the alarms test cases.
 	LabelAlarms = "alarms"
+	// LabelInfrastructureInventory is the label applied to infrastructure inventory test cases.
+	LabelInfrastructureInventory = "infrastructure-inventory"
 )
 
 const (
