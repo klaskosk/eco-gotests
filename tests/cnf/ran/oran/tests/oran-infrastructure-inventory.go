@@ -195,13 +195,16 @@ var _ = Describe("ORAN Infrastructure Inventory Tests",
 			By("retrieving each resource by resourceId")
 
 			for _, host := range qualifiedHosts {
-				resource, found := helper.FindResourceByDescription(resources, host.Object.Name)
+				resourceID, err := uuid.Parse(string(host.Object.UID))
+				Expect(err).ToNot(HaveOccurred(), "Failed to parse BareMetalHost UID")
+
+				resource, found := helper.FindResourceByResourceID(resources, resourceID)
 				Expect(found).To(BeTrue(), "Resource for BareMetalHost %s should be in list response", host.Object.Name)
 
 				retrievedResource, err := inventoryClient.GetResource(poolID, resource.ResourceId)
 				Expect(err).ToNot(HaveOccurred(), "Failed to get resource for BareMetalHost %s", host.Object.Name)
 				Expect(retrievedResource.ResourcePoolId).To(Equal(poolID))
-				Expect(retrievedResource.Description).To(Equal(host.Object.Name))
+				Expect(retrievedResource.Description).To(Equal(helper.ExpectedResourceDescription(host)))
 			}
 		})
 

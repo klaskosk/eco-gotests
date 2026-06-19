@@ -6,6 +6,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/google/uuid"
 	bmhv1alpha1 "github.com/metal3-io/baremetal-operator/apis/metal3.io/v1alpha1"
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/bmh"
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/clients"
@@ -22,8 +23,9 @@ import (
 )
 
 const (
-	resourcePoolNameLabel   = "resources.clcm.openshift.io/resourcePoolName"
-	localManagedClusterName = "local-cluster"
+	resourcePoolNameLabel            = "resources.clcm.openshift.io/resourcePoolName"
+	resourceInfoDescriptionAnnotation = "resourceinfo.clcm.openshift.io/description"
+	localManagedClusterName          = "local-cluster"
 )
 
 var qualifyingProvisioningStates = []bmhv1alpha1.ProvisioningState{
@@ -221,15 +223,30 @@ func FindDeploymentManagerByName(
 	return nil, false
 }
 
-// FindResourceByDescription returns the resource with the given description from a list response.
-func FindResourceByDescription(resources []oranapi.Resource, description string) (*oranapi.Resource, bool) {
+// FindResourceByResourceID returns the resource with the given resourceId from a list response.
+func FindResourceByResourceID(resources []oranapi.Resource, resourceID uuid.UUID) (*oranapi.Resource, bool) {
 	for _, resource := range resources {
-		if resource.Description == description {
+		if resource.ResourceId == resourceID {
 			return &resource, true
 		}
 	}
 
 	return nil, false
+}
+
+// ExpectedResourceDescription returns the inventory API description for a BareMetalHost, matching
+// oran-o2ims getResourceInfoDescription behavior.
+func ExpectedResourceDescription(host *bmh.BmhBuilder) string {
+	if host.Object.Annotations == nil {
+		return ""
+	}
+
+	return host.Object.Annotations[resourceInfoDescriptionAnnotation]
+}
+
+// BareMetalHostResourceID returns the inventory resourceId for a BareMetalHost (its Kubernetes UID).
+func BareMetalHostResourceID(host *bmh.BmhBuilder) (uuid.UUID, error) {
+	return uuid.Parse(string(host.Object.UID))
 }
 
 // BareMetalHostName returns the BareMetalHost metadata.name.
