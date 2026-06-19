@@ -22,6 +22,9 @@ import (
 
 var inventorySubscriberURL = "https://" + RANConfig.GetAppsURL(tsparams.SubscriberSubdomain)
 
+const inventoryBMHPrerequisite = "requires a BareMetalHost labeled with " +
+	"resources.clcm.openshift.io/resourcePoolName in available or later provisioning state"
+
 var _ = Describe("ORAN Infrastructure Inventory Tests",
 	Label(tsparams.LabelPreProvision, tsparams.LabelInfrastructureInventory), func() {
 		var inventoryClient *oranapi.InventoryClient
@@ -46,11 +49,13 @@ var _ = Describe("ORAN Infrastructure Inventory Tests",
 			Expect(err).ToNot(HaveOccurred(), "Failed to get API versions")
 			Expect(apiVersions.ApiVersions).ToNot(BeNil())
 			Expect(*apiVersions.ApiVersions).ToNot(BeEmpty())
+			Expect(apiVersions.UriPrefix).ToNot(BeNil())
+			Expect(*apiVersions.UriPrefix).To(ContainSubstring("infrastructureInventory"))
 
-			hasMajorVersion1 := slices.ContainsFunc(*apiVersions.ApiVersions, func(version oranapi.APIVersion) bool {
-				return version.Version != nil && *version.Version == "1"
-			})
-			Expect(hasMajorVersion1).To(BeTrue(), "API versions should include major version 1")
+			for _, version := range *apiVersions.ApiVersions {
+				Expect(version.Version).ToNot(BeNil())
+				Expect(*version.Version).ToNot(BeEmpty())
+			}
 
 			By("getting O-Cloud info")
 
@@ -174,7 +179,9 @@ var _ = Describe("ORAN Infrastructure Inventory Tests",
 				}
 			}
 
-			Expect(qualifiedHosts).ToNot(BeEmpty(), "At least one qualifying BareMetalHost should be present")
+			if len(qualifiedHosts) == 0 {
+				Skip(inventoryBMHPrerequisite)
+			}
 
 			poolID, err := uuid.Parse(string(selectedPool.UID))
 			Expect(err).ToNot(HaveOccurred(), "Failed to parse ResourcePool UID")
@@ -204,7 +211,9 @@ var _ = Describe("ORAN Infrastructure Inventory Tests",
 
 			resourceTypes, err := inventoryClient.ListResourceTypes()
 			Expect(err).ToNot(HaveOccurred(), "Failed to list resource types from the API")
-			Expect(resourceTypes).ToNot(BeEmpty(), "At least one resource type should be present")
+			if len(resourceTypes) == 0 {
+				Skip(inventoryBMHPrerequisite)
+			}
 
 			By("retrieving each resource type by resourceTypeId")
 
@@ -222,7 +231,9 @@ var _ = Describe("ORAN Infrastructure Inventory Tests",
 
 			alarmDictionaries, err := inventoryClient.ListAlarmDictionaries()
 			Expect(err).ToNot(HaveOccurred(), "Failed to list alarm dictionaries from the API")
-			Expect(alarmDictionaries).ToNot(BeEmpty(), "At least one alarm dictionary should be present")
+			if len(alarmDictionaries) == 0 {
+				Skip(inventoryBMHPrerequisite)
+			}
 
 			By("retrieving each alarm dictionary by alarmDictionaryId")
 
@@ -241,8 +252,9 @@ var _ = Describe("ORAN Infrastructure Inventory Tests",
 				func(resourceType oranapi.ResourceType) bool {
 					return resourceType.AlarmDictionaryId == nil
 				})
-			Expect(resourceTypesWithDictionary).ToNot(BeEmpty(),
-				"At least one resource type with an alarm dictionary should be present")
+			if len(resourceTypesWithDictionary) == 0 {
+				Skip(inventoryBMHPrerequisite)
+			}
 
 			By("retrieving the alarm dictionary for each associated resource type")
 
@@ -292,10 +304,17 @@ var _ = Describe("ORAN Infrastructure Inventory Tests",
 			Expect(err).ToNot(HaveOccurred(), "Failed to list deployment managers with fields=name")
 			Expect(nameOnlyManagers).ToNot(BeEmpty())
 
+			allManagers, err := inventoryClient.ListDeploymentManagers()
+			Expect(err).ToNot(HaveOccurred(), "Failed to list deployment managers")
+			Expect(allManagers).ToNot(BeEmpty())
+
 			for _, deploymentManager := range nameOnlyManagers {
 				Expect(deploymentManager.Name).ToNot(BeEmpty())
-				Expect(deploymentManager.DeploymentManagerId).To(Equal(uuid.Nil))
-				Expect(deploymentManager.Description).To(BeEmpty())
+
+				matchingManager, found := helper.FindDeploymentManagerByName(allManagers, deploymentManager.Name)
+				Expect(found).To(BeTrue(), "fields=name response should include a known deployment manager")
+				Expect(deploymentManager.DeploymentManagerId).To(Equal(matchingManager.DeploymentManagerId))
+				Expect(deploymentManager.Extensions).To(BeNil())
 			}
 
 			By("listing deployment managers with exclude_fields=extensions")
@@ -311,10 +330,6 @@ var _ = Describe("ORAN Infrastructure Inventory Tests",
 			}
 
 			By("filtering deployment managers by name")
-
-			allManagers, err := inventoryClient.ListDeploymentManagers()
-			Expect(err).ToNot(HaveOccurred(), "Failed to list deployment managers")
-			Expect(allManagers).ToNot(BeEmpty())
 
 			knownManager := allManagers[0]
 

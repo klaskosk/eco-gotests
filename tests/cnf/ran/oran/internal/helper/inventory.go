@@ -21,7 +21,10 @@ import (
 	goclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const resourcePoolNameLabel = "resources.clcm.openshift.io/resourcePoolName"
+const (
+	resourcePoolNameLabel   = "resources.clcm.openshift.io/resourcePoolName"
+	localManagedClusterName = "local-cluster"
+)
 
 var qualifyingProvisioningStates = []bmhv1alpha1.ProvisioningState{
 	bmhv1alpha1.StateAvailable,
@@ -79,7 +82,7 @@ func ListResourcePoolCRs(client *clients.Settings, namespace string) ([]inventor
 	return poolList.Items, nil
 }
 
-// ListManagedClusters lists ManagedCluster resources on the hub cluster.
+// ListManagedClusters lists ManagedCluster resources on the hub cluster, excluding the local hub cluster.
 func ListManagedClusters(client *clients.Settings) ([]clusterv1.ManagedCluster, error) {
 	if err := client.AttachScheme(clusterv1.Install); err != nil {
 		return nil, fmt.Errorf("failed to attach ManagedCluster scheme: %w", err)
@@ -92,7 +95,17 @@ func ListManagedClusters(client *clients.Settings) ([]clusterv1.ManagedCluster, 
 		return nil, fmt.Errorf("failed to list ManagedClusters: %w", err)
 	}
 
-	return managedClusterList.Items, nil
+	var clusters []clusterv1.ManagedCluster
+
+	for _, cluster := range managedClusterList.Items {
+		if cluster.Name == localManagedClusterName {
+			continue
+		}
+
+		clusters = append(clusters, cluster)
+	}
+
+	return clusters, nil
 }
 
 // ListQualifiedBareMetalHostsForPool lists BareMetalHosts labeled for the given resource pool name that have
