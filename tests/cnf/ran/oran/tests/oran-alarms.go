@@ -58,7 +58,9 @@ var _ = Describe("ORAN Alarms Tests", Label(tsparams.LabelPostProvision, tsparam
 	})
 
 	// 83554 - Retrieve an alarm from the API
-	It("retrieves an alarm from the API", reportxml.ID("83554"), func() {
+	FIt("retrieves an alarm from the API", reportxml.ID("83554"), func() {
+		Fail("test")
+
 		By("creating a test alarm")
 
 		postableAlert := alert.CreatePostable(alert.SeverityMajor, spoke1ClusterID)
