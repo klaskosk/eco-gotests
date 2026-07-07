@@ -18,13 +18,12 @@ linters:
     - funlen
     - gochecknoinits
     - gocognit
-    - goconst
     - gocritic
     - gocyclo
     - godot
     - godox
     - goheader
-    - gomodguard
+    - gomodguard_v2
     - goprintffuncname
     - importas
     - lll

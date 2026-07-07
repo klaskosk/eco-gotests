@@ -2,6 +2,7 @@ package spoke_test
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -12,7 +13,6 @@ import (
 	. "github.com/rh-ecosystem-edge/eco-gotests/tests/assisted/ztp/internal/ztpinittools"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/assisted/ztp/spoke/internal/diskencryption"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/assisted/ztp/spoke/internal/tsparams"
-	"golang.org/x/exp/slices"
 )
 
 var (

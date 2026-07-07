@@ -1,6 +1,6 @@
 FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/ubi:latest AS fetcher
 
-ARG GO_VER=go1.26.0
+ARG GO_VER=go1.26.4
 RUN dnf install -y tar
 
 ARG TARGETARCH
@@ -14,8 +14,8 @@ FROM registry.access.redhat.com/ubi9/ubi:latest
 # architecture.
 COPY --from=fetcher /usr/local/go /usr/local/go
 
-ARG GO_VER=go1.26.0
-ARG GINKGO_VER=ginkgo@v2.29.0
+ARG GO_VER=go1.26.4
+ARG GINKGO_VER=ginkgo@v2.32.0
 ARG CONTAINERUSER=testuser
 
 LABEL description="eco-gotests development image"
