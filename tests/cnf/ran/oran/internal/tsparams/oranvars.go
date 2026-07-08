@@ -83,6 +83,6 @@ var (
 		Type:    string(provisioningv1alpha1.CTconditionTypes.Validated),
 		Reason:  string(provisioningv1alpha1.CTconditionReasons.Failed),
 		Status:  metav1.ConditionFalse,
-		Message: "Error validating the clusterInstanceParameters schema",
+		Message: "ClusterTemplate must define hardware provisioning",
 	}
 )
