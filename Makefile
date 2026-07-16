@@ -53,6 +53,7 @@ run-internal-pkg-unit-tests:
 run-ran-pkg-unit-tests:
 	@echo "Executing eco-gotests RAN package unit tests"
 	UNIT_TEST=true go test -tags=unit_test -v ./tests/cnf/ran/ptp/internal/iface
+	UNIT_TEST=true go test -tags=unit_test -v ./tests/cnf/ran/ptp/internal/profiles
 
 run-system-tests-pkg-unit-tests:
 	@echo "Executing eco-gotests internal package unit tests"
