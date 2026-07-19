@@ -425,7 +425,9 @@ func createV1ServiceMonitorOnNode(client *clients.Settings, nodeName string) err
 			Interval:        "30s",
 			Port:            "metrics",
 			BearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token",
-			Scheme:          ptr.To(monitoringv1.SchemeHTTPS),
+			// Although there exists a constant for SchemeHTTPS, it is all uppercase, which causes an error
+			// when actually tried on the cluster. So we use the lowercase string "https" instead.
+			Scheme: ptr.To(monitoringv1.Scheme("https")),
 			HTTPConfigWithProxyAndTLSFiles: monitoringv1.HTTPConfigWithProxyAndTLSFiles{
 				HTTPConfigWithTLSFiles: monitoringv1.HTTPConfigWithTLSFiles{
 					TLSConfig: &monitoringv1.TLSConfig{
@@ -671,7 +673,7 @@ func defineConsumerContainer(nodeName string) (*corev1.Container, error) {
 // https://github.com/redhat-cne/cloud-event-proxy/blob/release-4.18/examples/manifests/consumer.yaml.
 func defineSidecarContainer(nodeName string, cloudEventProxyImage string) (*corev1.Container, error) {
 	container, err := pod.NewContainerBuilder(
-		"cloud-event-sidecar", cloudEventProxyImage, []string{"./cloud-event-sidecar"}).
+		"cloud-event-sidecar", cloudEventProxyImage, []string{"cloud-event-proxy"}).
 		WithImagePullPolicy(corev1.PullAlways).
 		WithEnvVar("NODE_NAME", nodeName).
 		WithPorts([]corev1.ContainerPort{{
@@ -688,15 +690,17 @@ func defineSidecarContainer(nodeName string, cloudEventProxyImage string) (*core
 	}
 
 	transportHost := fmt.Sprintf("--transport-host=%s.%s.svc.cluster.local:9043",
-		getConsumerServiceName(nodeName), tsparams.CloudEventsNamespace)
+		getConsumerEventsSubscriptionServiceName(nodeName), tsparams.CloudEventsNamespace)
 	container.Args = []string{
 		"--metrics-addr=127.0.0.1:9091",
 		"--store-path=/store",
 		transportHost,
 		"--http-event-publishers=ptp-event-publisher-service-NODE_NAME.openshift-ptp.svc.cluster.local:9043",
 		"--api-port=8089",
+		"--api-version=1.0",
 	}
 	container.SecurityContext = nil
+	container.Command = nil
 
 	return container, nil
 }
@@ -705,7 +709,7 @@ func defineSidecarContainer(nodeName string, cloudEventProxyImage string) (*core
 // https://github.com/redhat-cne/cloud-event-proxy/blob/release-4.18/examples/manifests/consumer.yaml.
 func defineRBACProxyContainer(kubeRBACProxyImage string) (*corev1.Container, error) {
 	container, err := pod.NewContainerBuilder(
-		"kube-rbac-proxy", kubeRBACProxyImage, []string{"/usr/local/bin/kube-rbac-proxy"}).
+		"kube-rbac-proxy", kubeRBACProxyImage, []string{"kube-rbac-proxy"}).
 		WithPorts([]corev1.ContainerPort{{
 			Name:          "https",
 			ContainerPort: 8443,
@@ -724,6 +728,7 @@ func defineRBACProxyContainer(kubeRBACProxyImage string) (*corev1.Container, err
 	}
 
 	container.SecurityContext = nil
+	container.Command = nil
 	container.Args = []string{
 		"--logtostderr",
 		"--secure-listen-address=:8443",

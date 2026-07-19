@@ -250,7 +250,8 @@ func verifyPTPLockedEventOnNodes(client *clients.Settings, startTime time.Time) 
 			events.IsType(eventptp.PtpStateChange),
 			events.HasValue(events.WithSyncState(eventptp.LOCKED), events.ContainingResource(string(iface.Master))),
 		)
-		err = events.WaitForEvent(consumerPod, startTime, 5*time.Minute, filter)
+		err = events.WaitForEvent(consumerPod, startTime, 5*time.Minute, filter,
+			events.WithContainer("cloud-event-consumer"))
 		Expect(err).ToNot(HaveOccurred(), "Failed to wait for locked event with iface.Master on node %s", nodeName)
 	}
 }
