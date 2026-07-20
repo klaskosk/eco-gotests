@@ -42,6 +42,26 @@ func NewProvisioningRequest(client runtimeclient.Client, templateVersion string)
 	return prBuilder
 }
 
+// NewSecondaryProvisioningRequest creates a ProvisioningRequest builder for a secondary PR using TestPRName2 and
+// distinct cluster/node names so the request does not fail on clusterName ownership before hardware allocation is
+// attempted.
+func NewSecondaryProvisioningRequest(
+	client runtimeclient.Client, templateVersion string) *oran.ProvisioningRequestBuilder {
+	versionWithAffix := RANConfig.ClusterTemplateAffix + "-" + templateVersion
+	prBuilder := oran.NewPRBuilder(client, tsparams.TestPRName2, tsparams.ClusterTemplateName, versionWithAffix).
+		WithTemplateParameter("nodeClusterName", tsparams.TestName2).
+		WithTemplateParameter("oCloudSiteId", tsparams.OCloudSiteID).
+		WithTemplateParameter("policyTemplateParameters", map[string]any{}).
+		WithTemplateParameter("clusterInstanceParameters", map[string]any{
+			"clusterName": tsparams.TestName2,
+			"nodes": []map[string]any{{
+				"hostName": tsparams.TestName2,
+			}},
+		})
+
+	return prBuilder
+}
+
 // NewInlineBMCPR creates a ProvisioningRequest builder for ClusterTemplates that omit hwMgmtDefaults and rely on inline
 // BMC details in clusterInstanceParameters. All required parameters and the affix are set from RANConfig. The BMC and
 // network data are incorrect so that a ClusterInstance is generated but will not provision.

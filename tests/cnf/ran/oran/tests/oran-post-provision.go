@@ -314,8 +314,10 @@ func waitForLabels() {
 func getStartTime() time.Time {
 	startTime := time.Now()
 
-	// Truncating then adding is equivalent to rounding up the second.
-	time.Sleep(time.Until(startTime.Truncate(time.Second).Add(time.Second)))
+	// Since we cannot verify that a second starts at the same time on the cluster versus the test executor, it is
+	// most reliable to wait for two seconds to ensure that the time we count as starting is almost certainly not
+	// the same time this function returns on both machines.
+	time.Sleep(2 * time.Second)
 
 	return startTime
 }
