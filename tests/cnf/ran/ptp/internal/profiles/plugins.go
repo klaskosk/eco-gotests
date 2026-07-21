@@ -42,6 +42,17 @@ func GetGmInterfaceToGPS(profile *ptpv1.PtpProfile) (iface.Name, error) {
 	var err error
 
 	if _, ok := profile.Plugins[string(ptp.PluginTypeE810)]; ok {
+		intelPlugin, err := getIntelPlugin(profile, ptp.PluginTypeE810)
+		if err != nil {
+			return "", fmt.Errorf("failed to get E810 plugin: %w", err)
+		}
+
+		if len(intelPlugin.Pins) == 1 {
+			for ifaceName := range intelPlugin.Pins {
+				return iface.Name(ifaceName), nil
+			}
+		}
+
 		txInterfaces, err = getInterfacesWithPluginPins(profile, ptp.PluginTypeE810, PinStateTx)
 		if err != nil {
 			return "", fmt.Errorf("failed to get interfaces for E810 plugin: %w", err)
