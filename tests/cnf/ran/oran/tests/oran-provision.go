@@ -228,9 +228,9 @@ func saveSpoke1Secret(suffix, key, fileName string) error {
 	return os.WriteFile(fileName, value, 0644)
 }
 
-// verifySpokeProvisioning ensures that for a provisioned spoke, its NodeAllocationRequest exists, its BMC details are
-// correct, the pull-secret and extra-manifests exist, and finally that its policies are compliant, in that order.
-// Errors are accumulated for each validation and returned so that every one of the validations will run and be logged.
+// verifySpokeProvisioning ensures that for a provisioned spoke, the pull-secret and extra-manifests exist, and finally
+// that its policies are compliant, in that order. Errors are accumulated for each validation and returned so that every
+// one of the validations will run and be logged.
 func verifySpokeProvisioning() error {
 	var accumulatedErrors []error
 
