@@ -56,6 +56,7 @@ run-ran-pkg-unit-tests:
 	UNIT_TEST=true go test -tags=unit_test -v ./tests/cnf/ran/ptp/internal/profiles
 	UNIT_TEST=true go test -tags=unit_test -v ./tests/cnf/ran/ptp/internal/consumer
 	UNIT_TEST=true go test -tags=unit_test -v ./tests/cnf/ran/oran/internal/inventory
+	UNIT_TEST=true go test -tags=unit_test -v ./tests/cnf/ran/oran/internal/clusterapi
 
 run-system-tests-pkg-unit-tests:
 	@echo "Executing eco-gotests internal package unit tests"
