@@ -41,7 +41,7 @@ func NewSecurityContextConstraints(name string, namespaces ...string) *secv1.Sec
 		AllowHostIPC:             true,
 		AllowHostNetwork:         false,
 		AllowHostPorts:           false,
-		AllowedCapabilities:      []corev1.Capability{"MKNOD"},
+		AllowedCapabilities:      []corev1.Capability{"MKNOD", "SYS_ADMIN"},
 		RequiredDropCapabilities: []corev1.Capability{"ALL"},
 		DefaultAddCapabilities:   []corev1.Capability{},
 		RunAsUser: secv1.RunAsUserStrategyOptions{
@@ -73,6 +73,9 @@ func NewSecurityContextConstraints(name string, namespaces ...string) *secv1.Sec
 					fmt.Sprintf("system:serviceaccount:%s:rook-ceph-mgr", ns),
 					fmt.Sprintf("system:serviceaccount:%s:rook-ceph-osd", ns),
 					fmt.Sprintf("system:serviceaccount:%s:rook-ceph-rgw", ns),
+					fmt.Sprintf("system:serviceaccount:%s:rook-ceph-nvmeof", ns),
+					fmt.Sprintf("system:serviceaccount:%s:rook-ceph-cmd-reporter", ns),
+					fmt.Sprintf("system:serviceaccount:%s:rook-ceph-purge-osd", ns),
 				}...)
 			}
 			return
