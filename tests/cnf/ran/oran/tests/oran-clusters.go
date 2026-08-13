@@ -20,6 +20,7 @@ import (
 	. "github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/auth"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/clusterapi"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/o2imstest"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/tsparams"
 	mocksmo "github.com/rh-ecosystem-edge/eco-gotests/tests/internal/oran-mock-smo"
 )
@@ -44,7 +45,7 @@ var _ = Describe("ORAN Cluster API Tests", Label(tsparams.LabelPostProvision, ts
 		allVersions, err := clusterClient.GetAllVersions()
 		Expect(err).ToNot(HaveOccurred(), "Failed to get all cluster API versions")
 
-		verifyErr := clusterapi.VerifyAPIVersions(allVersions)
+		verifyErr := o2imstest.VerifyAPIVersions(allVersions, tsparams.ClusterAPIVersion, tsparams.ClusterAPIURIPrefix)
 		Expect(verifyErr).ToNot(HaveOccurred(), "All API versions response failed verification")
 	})
 
@@ -55,7 +56,7 @@ var _ = Describe("ORAN Cluster API Tests", Label(tsparams.LabelPostProvision, ts
 		minorVersions, err := clusterClient.GetMinorVersions()
 		Expect(err).ToNot(HaveOccurred(), "Failed to get minor cluster API versions")
 
-		verifyErr := clusterapi.VerifyAPIVersions(minorVersions)
+		verifyErr := o2imstest.VerifyAPIVersions(minorVersions, tsparams.ClusterAPIVersion, tsparams.ClusterAPIURIPrefix)
 		Expect(verifyErr).ToNot(HaveOccurred(), "Minor API versions response failed verification")
 	})
 
@@ -166,7 +167,7 @@ var _ = Describe("ORAN Cluster API Tests", Label(tsparams.LabelPostProvision, ts
 		Expect(err).ToNot(HaveOccurred(),
 			"Failed to get alarm dictionary for NodeClusterType %s", chosen.NodeClusterTypeId)
 
-		verifyErr := clusterapi.VerifyAlarmDictionaryStructure(dictionary)
+		verifyErr := o2imstest.VerifyAlarmDictionaryStructure(dictionary)
 		Expect(verifyErr).ToNot(HaveOccurred(),
 			"Alarm dictionary for NodeClusterType %s failed verification", chosen.NodeClusterTypeId)
 	})
@@ -272,9 +273,16 @@ var _ = Describe("ORAN Cluster API Tests", Label(tsparams.LabelPostProvision, ts
 		Expect(containsSpoke).To(BeFalse(), "Filtered list should not include %s", spokeName)
 
 		containsHub := slices.ContainsFunc(neqClusters, func(nodeCluster oranapi.NodeCluster) bool {
-			return nodeCluster.Name == "local-cluster" ||
-				clusterapi.ExtensionString(nodeCluster.Extensions, tsparams.ClusterModelExtension) ==
-					tsparams.ClusterModelHubCluster
+			if nodeCluster.Name == "local-cluster" {
+				return true
+			}
+
+			if nodeCluster.Extensions == nil {
+				return false
+			}
+
+			return o2imstest.ExtensionString(*nodeCluster.Extensions, tsparams.ClusterModelExtension) ==
+				tsparams.ClusterModelHubCluster
 		})
 		Expect(containsHub).To(BeTrue(), "Filtered list should still include the hub NodeCluster")
 	})
@@ -557,7 +565,7 @@ var _ = Describe("ORAN Cluster API Tests", Label(tsparams.LabelPostProvision, ts
 		consumerSubscriptionID := uuid.New()
 		created, err := clusterClient.CreateClusterSubscription(oranapi.ClusterSubscription{
 			ConsumerSubscriptionId: &consumerSubscriptionID,
-			Callback: mocksmo.ObserverCallbackURL(mockSMOBaseURL, consumerSubscriptionID.String()),
+			Callback:               mocksmo.ObserverCallbackURL(mockSMOBaseURL, consumerSubscriptionID.String()),
 		})
 		Expect(err).ToNot(HaveOccurred(), "Failed to create cluster subscription")
 		Expect(created.SubscriptionId).ToNot(BeNil(), "subscriptionId should be assigned")
@@ -596,7 +604,7 @@ var _ = Describe("ORAN Cluster API Tests", Label(tsparams.LabelPostProvision, ts
 		By("verifying each alarm dictionary structure")
 
 		for _, dictionary := range dictionaries {
-			verifyErr := clusterapi.VerifyAlarmDictionaryStructure(dictionary)
+			verifyErr := o2imstest.VerifyAlarmDictionaryStructure(dictionary)
 			Expect(verifyErr).ToNot(HaveOccurred(),
 				"Alarm dictionary %s failed verification", dictionary.AlarmDictionaryId)
 		}
@@ -619,7 +627,7 @@ var _ = Describe("ORAN Cluster API Tests", Label(tsparams.LabelPostProvision, ts
 		Expect(retrieved.AlarmDictionaryId).To(Equal(chosen.AlarmDictionaryId),
 			"Retrieved AlarmDictionary ID should match requested ID")
 
-		verifyErr := clusterapi.VerifyAlarmDictionaryStructure(retrieved)
+		verifyErr := o2imstest.VerifyAlarmDictionaryStructure(retrieved)
 		Expect(verifyErr).ToNot(HaveOccurred(),
 			"Retrieved AlarmDictionary %s failed verification", retrieved.AlarmDictionaryId)
 	})
@@ -639,7 +647,7 @@ var _ = Describe("ORAN Cluster API Tests", Label(tsparams.LabelPostProvision, ts
 		consumerSubscriptionID := uuid.New()
 		created, err := clusterClient.CreateClusterSubscription(oranapi.ClusterSubscription{
 			ConsumerSubscriptionId: &consumerSubscriptionID,
-			Callback: mocksmo.ObserverCallbackURL(mockSMOBaseURL, consumerSubscriptionID.String()),
+			Callback:               mocksmo.ObserverCallbackURL(mockSMOBaseURL, consumerSubscriptionID.String()),
 		})
 		Expect(err).ToNot(HaveOccurred(), "Failed to create cluster subscription")
 		Expect(created.SubscriptionId).ToNot(BeNil(), "subscriptionId should be assigned")
@@ -683,28 +691,13 @@ var _ = Describe("ORAN Cluster API Tests", Label(tsparams.LabelPostProvision, ts
 			mocksmo.WithStart[oranapi.ClusterChangeNotification](changeTime),
 			mocksmo.WithObserverID[oranapi.ClusterChangeNotification](consumerSubscriptionID.String()),
 			mocksmo.WithTimeout[oranapi.ClusterChangeNotification](2*time.Minute),
-			mocksmo.WithMatch(func(notification *oranapi.ClusterChangeNotification) bool {
-				if notification.NotificationEventType != oranapi.ClusterChangeNotificationEventTypeModify {
-					return false
-				}
-
-				if notification.ConsumerSubscriptionId == nil ||
-					*notification.ConsumerSubscriptionId != consumerSubscriptionID {
-					return false
-				}
-
-				if notification.PriorObjectState == nil || notification.PostObjectState == nil {
-					return false
-				}
-
-				if !clusterapi.NotificationRefersToNodeCluster(
-					notification, nodeClusterID, spoke.Definition.Name) {
-					return false
-				}
-
-				return clusterapi.NotificationHasExtensionLabel(
-					notification, tsparams.TestNotificationLabel, labelValue)
-			}),
+			mocksmo.WithMatch(clusterapi.MatchModifyNodeCluster(
+				consumerSubscriptionID,
+				nodeClusterID,
+				spoke.Definition.Name,
+				tsparams.TestNotificationLabel,
+				labelValue,
+			)),
 		)
 		Expect(err).ToNot(HaveOccurred(), "Failed to receive MODIFY cluster change notification")
 	})

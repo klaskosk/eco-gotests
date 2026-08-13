@@ -9,6 +9,7 @@ import (
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/bmh"
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/clients"
 	oranapi "github.com/rh-ecosystem-edge/eco-goinfra/pkg/oran/api"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/o2imstest"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/tsparams"
 )
 
@@ -23,18 +24,18 @@ func VerifyResourceMatchesBMH(
 
 	hwDataBuilder, hwErr := bmh.PullHardwareData(hubClient, host.Definition.Name, host.Definition.Namespace)
 
-	errs = appendMismatch(errs, "resourceId", string(host.Definition.UID), apiResource.ResourceId.String())
-	errs = appendMismatch(errs, "resourcePoolId", poolID, apiResource.ResourcePoolId)
+	errs = o2imstest.AppendMismatch(errs, "resourceId", string(host.Definition.UID), apiResource.ResourceId.String())
+	errs = o2imstest.AppendMismatch(errs, "resourcePoolId", poolID, apiResource.ResourcePoolId)
 
 	expectedDescription := ""
 	if host.Definition.Annotations != nil {
 		expectedDescription = host.Definition.Annotations[tsparams.ResourceInfoDescriptionAnnotation]
 	}
 
-	errs = appendMismatch(errs, "description", expectedDescription, apiResource.Description)
+	errs = o2imstest.AppendMismatch(errs, "description", expectedDescription, apiResource.Description)
 
-	errs = appendError(errs, verifyResourceHardwareFields(apiResource, hwDataBuilder, hwErr))
-	errs = appendError(errs, verifyResourceExtensionStates(apiResource, host.Definition))
+	errs = o2imstest.AppendError(errs, verifyResourceHardwareFields(apiResource, hwDataBuilder, hwErr))
+	errs = o2imstest.AppendError(errs, verifyResourceExtensionStates(apiResource, host.Definition))
 
 	return errors.Join(errs...)
 }
@@ -57,11 +58,11 @@ func verifyResourceHardwareFields(
 
 	var errs []error
 
-	errs = appendMismatch(errs, "globalAssetId",
+	errs = o2imstest.AppendMismatch(errs, "globalAssetId",
 		hwData.Spec.HardwareDetails.SystemVendor.SerialNumber, apiResource.GlobalAssetId)
-	errs = appendMismatch(errs, "extensions.vendor",
+	errs = o2imstest.AppendMismatch(errs, "extensions.vendor",
 		hwData.Spec.HardwareDetails.SystemVendor.Manufacturer, apiResource.Extensions["vendor"])
-	errs = appendMismatch(errs, "extensions.model",
+	errs = o2imstest.AppendMismatch(errs, "extensions.model",
 		hwData.Spec.HardwareDetails.SystemVendor.ProductName, apiResource.Extensions["model"])
 
 	return errors.Join(errs...)
@@ -71,13 +72,13 @@ func verifyResourceHardwareFields(
 func verifyResourceExtensionStates(apiResource oranapi.Resource, host *bmhv1alpha1.BareMetalHost) error {
 	var errs []error
 
-	errs = appendMismatch(errs, "extensions.adminState",
+	errs = o2imstest.AppendMismatch(errs, "extensions.adminState",
 		expectedAdminState(host), apiResource.Extensions["adminState"])
-	errs = appendMismatch(errs, "extensions.operationalState",
+	errs = o2imstest.AppendMismatch(errs, "extensions.operationalState",
 		expectedOperationalState(host), apiResource.Extensions["operationalState"])
-	errs = appendMismatch(errs, "extensions.usageState",
+	errs = o2imstest.AppendMismatch(errs, "extensions.usageState",
 		expectedUsageState(host), apiResource.Extensions["usageState"])
-	errs = appendMismatch(errs, "extensions.powerState",
+	errs = o2imstest.AppendMismatch(errs, "extensions.powerState",
 		expectedPowerState(host), apiResource.Extensions["powerState"])
 
 	return errors.Join(errs...)

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/ocm"
 	oranapi "github.com/rh-ecosystem-edge/eco-goinfra/pkg/oran/api"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/o2imstest"
 )
 
 // VerifyDeploymentManagerMatchesCluster checks that an API Deployment Manager matches a ManagedCluster.
@@ -16,12 +17,12 @@ func VerifyDeploymentManagerMatchesCluster(
 ) error {
 	var errs []error
 
-	errs = appendMismatch(errs, "name", cluster.Definition.Name, apiManager.Name)
-	errs = appendError(errs, verifyDeploymentManagerRequiredFields(apiManager))
+	errs = o2imstest.AppendMismatch(errs, "name", cluster.Definition.Name, apiManager.Name)
+	errs = o2imstest.AppendError(errs, verifyDeploymentManagerRequiredFields(apiManager))
 
 	expectedURI, uriErr := expectedServiceURI(cluster)
-	errs = appendError(errs, uriErr)
-	errs = appendMismatch(errs, "serviceUri", expectedURI, apiManager.ServiceUri)
+	errs = o2imstest.AppendError(errs, uriErr)
+	errs = o2imstest.AppendMismatch(errs, "serviceUri", expectedURI, apiManager.ServiceUri)
 
 	return errors.Join(errs...)
 }

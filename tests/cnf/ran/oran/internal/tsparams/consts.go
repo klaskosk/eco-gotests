@@ -156,6 +156,14 @@ const (
 	HardwareManagerNodeIDLabel = "clcm.openshift.io/hwMgrNodeId"
 	// AlarmDefinitionSeverityField is the AlarmDefinition additionalFields key for severity.
 	AlarmDefinitionSeverityField = "severity"
+	// ClusterAPIVersion is the expected first version in cluster API version responses.
+	ClusterAPIVersion = "1.0.0"
+	// ClusterAPIURIPrefix is the expected uriPrefix in cluster API version responses.
+	ClusterAPIURIPrefix = "/o2ims-infrastructureCluster/v1"
+	// InventoryAPIVersion is the expected first version in inventory API version responses.
+	InventoryAPIVersion = "2.0.0"
+	// InventoryAPIURIPrefix is the expected uriPrefix in inventory API version responses.
+	InventoryAPIURIPrefix = "/o2ims-infrastructureInventory/v2"
 )
 
 // LogLevel is the glog verbosity level to use for logs in this suite or its helpers.

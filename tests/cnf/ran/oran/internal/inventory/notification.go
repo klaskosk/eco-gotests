@@ -1,40 +1,39 @@
 package inventory
 
 import (
-	"fmt"
-	"strings"
-
+	"github.com/google/uuid"
 	oranapi "github.com/rh-ecosystem-edge/eco-goinfra/pkg/oran/api"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/o2imstest"
 )
 
-// NotificationRefersToPool reports whether the notification references the given ResourcePool.
-func NotificationRefersToPool(
-	notification *oranapi.InventoryChangeNotification,
+// MatchResourcePoolChange returns a matcher for inventory notifications on the given ResourcePool.
+//
+// A notification matches when the event type and subscription ID agree, and the pool is referenced
+// either in objectRef or via resourcePoolId/name in postObjectState or priorObjectState.
+func MatchResourcePoolChange(
+	event oranapi.InventoryChangeNotificationEventType,
+	subscriptionID uuid.UUID,
 	poolID, poolName string,
-) bool {
-	if notification.ObjectRef != nil && strings.Contains(*notification.ObjectRef, poolID) {
-		return true
+) func(*oranapi.InventoryChangeNotification) bool {
+	return func(notification *oranapi.InventoryChangeNotification) bool {
+		if notification == nil {
+			return false
+		}
+
+		if notification.NotificationEventType != event {
+			return false
+		}
+
+		if notification.ConsumerSubscriptionId == nil || *notification.ConsumerSubscriptionId != subscriptionID {
+			return false
+		}
+
+		return o2imstest.RefersTo(
+			notification.ObjectRef,
+			notification.PostObjectState,
+			notification.PriorObjectState,
+			"resourcePoolId", poolID,
+			"name", poolName,
+		)
 	}
-
-	if notification.PostObjectState != nil {
-		if value, ok := (*notification.PostObjectState)["resourcePoolId"]; ok && fmt.Sprint(value) == poolID {
-			return true
-		}
-
-		if value, ok := (*notification.PostObjectState)["name"]; ok && fmt.Sprint(value) == poolName {
-			return true
-		}
-	}
-
-	if notification.PriorObjectState != nil {
-		if value, ok := (*notification.PriorObjectState)["resourcePoolId"]; ok && fmt.Sprint(value) == poolID {
-			return true
-		}
-
-		if value, ok := (*notification.PriorObjectState)["name"]; ok && fmt.Sprint(value) == poolName {
-			return true
-		}
-	}
-
-	return false
 }

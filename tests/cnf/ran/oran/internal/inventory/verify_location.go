@@ -8,6 +8,7 @@ import (
 	inventoryv1alpha1 "github.com/openshift-kni/oran-o2ims/api/inventory/v1alpha1"
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/oran"
 	oranapi "github.com/rh-ecosystem-edge/eco-goinfra/pkg/oran/api"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/o2imstest"
 )
 
 // VerifyLocationMatchesCR checks that an API Location matches the corresponding Location CR and related OCloudSites.
@@ -18,12 +19,12 @@ func VerifyLocationMatchesCR(
 ) error {
 	var errs []error
 
-	errs = appendMismatch(errs, "name", locationCR.Definition.Name, apiLocation.Name)
-	errs = appendMismatch(errs, "description", locationCR.Definition.Spec.Description, apiLocation.Description)
-	errs = appendMismatch(errs, "address", locationCR.Definition.Spec.Address, apiLocation.Address)
-	errs = appendError(errs, verifyLocationCoordinate(apiLocation, locationCR.Definition.Spec.Coordinate))
-	errs = appendError(errs, verifyLocationCivicAddress(apiLocation, locationCR.Definition.Spec.CivicAddress))
-	errs = appendError(errs, verifyStringSetEqual(
+	errs = o2imstest.AppendMismatch(errs, "name", locationCR.Definition.Name, apiLocation.Name)
+	errs = o2imstest.AppendMismatch(errs, "description", locationCR.Definition.Spec.Description, apiLocation.Description)
+	errs = o2imstest.AppendMismatch(errs, "address", locationCR.Definition.Spec.Address, apiLocation.Address)
+	errs = o2imstest.AppendError(errs, verifyLocationCoordinate(apiLocation, locationCR.Definition.Spec.Coordinate))
+	errs = o2imstest.AppendError(errs, verifyLocationCivicAddress(apiLocation, locationCR.Definition.Spec.CivicAddress))
+	errs = o2imstest.AppendError(errs, verifyStringSetEqual(
 		expectedSiteIDsForLocation(locationCR, readySites), apiSiteIDs(apiLocation),
 		fmt.Sprintf("oCloudSiteIds for Location %s", locationCR.Definition.Name)))
 
@@ -69,7 +70,7 @@ func verifyLocationCoordinate(apiLocation oranapi.LocationInfo, coordinate *inve
 	if apiLocation.Coordinate == nil {
 		errs = append(errs, fmt.Errorf("coordinate: want non-nil, got nil"))
 	} else {
-		errs = appendMismatch(errs, "coordinate.type", "Point", string(apiLocation.Coordinate.Type))
+		errs = o2imstest.AppendMismatch(errs, "coordinate.type", "Point", string(apiLocation.Coordinate.Type))
 
 		lat, latErr := strconv.ParseFloat(coordinate.Latitude, 64)
 		if latErr != nil {
@@ -98,7 +99,15 @@ func verifyLocationCoordinate(apiLocation oranapi.LocationInfo, coordinate *inve
 // verifyLocationCivicAddress checks that apiLocation.CivicAddress matches the CR civic address.
 func verifyLocationCivicAddress(
 	apiLocation oranapi.LocationInfo, civicAddress []inventoryv1alpha1.CivicAddressElement) error {
-	apiCivicAddress := derefSlice(apiLocation.CivicAddress)
+	if apiLocation.CivicAddress == nil {
+		if len(civicAddress) == 0 {
+			return nil
+		}
+
+		return fmt.Errorf("civicAddress: want length %d, got 0", len(civicAddress))
+	}
+
+	apiCivicAddress := *apiLocation.CivicAddress
 
 	if len(civicAddress) == 0 {
 		if len(apiCivicAddress) > 0 {
@@ -114,8 +123,10 @@ func verifyLocationCivicAddress(
 		errs = append(errs, fmt.Errorf("civicAddress: want length %d, got %d", len(civicAddress), len(apiCivicAddress)))
 	} else {
 		for i, element := range civicAddress {
-			errs = appendMismatch(errs, fmt.Sprintf("civicAddress[%d].caType", i), element.CaType, apiCivicAddress[i].CaType)
-			errs = appendMismatch(errs, fmt.Sprintf("civicAddress[%d].caValue", i), element.CaValue, apiCivicAddress[i].CaValue)
+			errs = o2imstest.AppendMismatch(errs, fmt.Sprintf("civicAddress[%d].caType", i),
+				element.CaType, apiCivicAddress[i].CaType)
+			errs = o2imstest.AppendMismatch(errs, fmt.Sprintf("civicAddress[%d].caValue", i),
+				element.CaValue, apiCivicAddress[i].CaValue)
 		}
 	}
 

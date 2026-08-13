@@ -6,33 +6,6 @@ import (
 	"math"
 )
 
-// appendMismatch appends a field mismatch error to errs when want and got differ.
-func appendMismatch(errs []error, field string, want, got any) []error {
-	if want != got {
-		return append(errs, fmt.Errorf("%s: want %#v, got %#v", field, want, got))
-	}
-
-	return errs
-}
-
-// appendError appends err to errs when err is non-nil.
-func appendError(errs []error, err error) []error {
-	if err != nil {
-		return append(errs, err)
-	}
-
-	return errs
-}
-
-// derefSlice returns the slice pointed to by s, treating a nil pointer to a slice as a nil slice.
-func derefSlice[T any](s *[]T) []T {
-	if s == nil {
-		return nil
-	}
-
-	return *s
-}
-
 // verifyStringSetEqual reports an error when want and got contain different string multisets.
 func verifyStringSetEqual(want, got []string, field string) error {
 	if len(want) != len(got) || !maps.Equal(countStrings(want), countStrings(got)) {

@@ -17,6 +17,7 @@ import (
 	. "github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/internal/raninittools"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/auth"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/inventory"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/o2imstest"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/tsparams"
 	mocksmo "github.com/rh-ecosystem-edge/eco-gotests/tests/internal/oran-mock-smo"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -57,7 +58,7 @@ var _ = Describe("ORAN Inventory API Tests", Label(tsparams.LabelPostProvision, 
 		allVersions, err := inventoryClient.GetAllVersions()
 		Expect(err).ToNot(HaveOccurred(), "Failed to get all inventory API versions")
 
-		verifyErr := inventory.VerifyAPIVersions(allVersions)
+		verifyErr := o2imstest.VerifyAPIVersions(allVersions, tsparams.InventoryAPIVersion, tsparams.InventoryAPIURIPrefix)
 		Expect(verifyErr).ToNot(HaveOccurred(), "All API versions response failed verification")
 
 		By("getting minor inventory API versions")
@@ -65,7 +66,7 @@ var _ = Describe("ORAN Inventory API Tests", Label(tsparams.LabelPostProvision, 
 		minorVersions, err := inventoryClient.GetMinorVersions()
 		Expect(err).ToNot(HaveOccurred(), "Failed to get minor inventory API versions")
 
-		verifyErr = inventory.VerifyAPIVersions(minorVersions)
+		verifyErr = o2imstest.VerifyAPIVersions(minorVersions, tsparams.InventoryAPIVersion, tsparams.InventoryAPIURIPrefix)
 		Expect(verifyErr).ToNot(HaveOccurred(), "Minor API versions response failed verification")
 	})
 
@@ -303,10 +304,8 @@ var _ = Describe("ORAN Inventory API Tests", Label(tsparams.LabelPostProvision, 
 		Expect(err).ToNot(HaveOccurred(), "Failed to get Resource Type alarm dictionary")
 		Expect(alarmDictionary.AlarmDictionaryId).To(Equal(*chosen.AlarmDictionaryId),
 			"Retrieved alarm dictionary ID should match Resource Type alarmDictionaryId")
-		Expect(alarmDictionary.AlarmDictionarySchemaVersion).ToNot(BeEmpty(),
-			"alarmDictionarySchemaVersion should be populated")
-		Expect(alarmDictionary.AlarmDefinition).ToNot(BeNil(),
-			"alarmDefinition should be present")
+		verifyErr := o2imstest.VerifyAlarmDictionaryStructure(alarmDictionary)
+		Expect(verifyErr).ToNot(HaveOccurred(), "Resource Type alarm dictionary structure should be valid")
 	})
 
 	// 89898 - List and retrieve Deployment Managers
@@ -359,12 +358,9 @@ var _ = Describe("ORAN Inventory API Tests", Label(tsparams.LabelPostProvision, 
 		Expect(alarmDictionaries).ToNot(BeEmpty(), "At least one Alarm Dictionary is required")
 
 		for _, alarmDictionary := range alarmDictionaries {
-			Expect(alarmDictionary.AlarmDictionaryId).ToNot(Equal(uuid.Nil),
-				"alarmDictionaryId should be populated")
-			Expect(alarmDictionary.AlarmDictionarySchemaVersion).ToNot(BeEmpty(),
-				"alarmDictionarySchemaVersion should be populated")
-			Expect(alarmDictionary.AlarmDefinition).ToNot(BeNil(),
-				"alarmDefinition should be present")
+			verifyErr := o2imstest.VerifyAlarmDictionaryStructure(alarmDictionary)
+			Expect(verifyErr).ToNot(HaveOccurred(), "Alarm dictionary %s structure should be valid",
+				alarmDictionary.AlarmDictionaryId)
 		}
 
 		By("retrieving an Alarm Dictionary by ID")
@@ -374,8 +370,8 @@ var _ = Describe("ORAN Inventory API Tests", Label(tsparams.LabelPostProvision, 
 		Expect(err).ToNot(HaveOccurred(), "Failed to get Alarm Dictionary %s", chosen.AlarmDictionaryId)
 		Expect(retrieved.AlarmDictionaryId).To(Equal(chosen.AlarmDictionaryId),
 			"Retrieved Alarm Dictionary ID should match listed dictionary")
-		Expect(retrieved.AlarmDefinition).ToNot(BeNil(),
-			"alarmDefinition should be present")
+		verifyErr := o2imstest.VerifyAlarmDictionaryStructure(retrieved)
+		Expect(verifyErr).ToNot(HaveOccurred(), "Retrieved alarm dictionary structure should be valid")
 	})
 
 	// 89900 - Subscription lifecycle (create, list, get, delete)
@@ -490,19 +486,12 @@ var _ = Describe("ORAN Inventory API Tests", Label(tsparams.LabelPostProvision, 
 			mocksmo.WithStart[oranapi.InventoryChangeNotification](createTime),
 			mocksmo.WithObserverID[oranapi.InventoryChangeNotification](consumerSubscriptionID.String()),
 			mocksmo.WithTimeout[oranapi.InventoryChangeNotification](2*time.Minute),
-			mocksmo.WithMatch(func(notification *oranapi.InventoryChangeNotification) bool {
-				if notification.NotificationEventType != oranapi.InventoryChangeNotificationEventTypeCreate {
-					return false
-				}
-
-				if notification.ConsumerSubscriptionId == nil ||
-					*notification.ConsumerSubscriptionId != consumerSubscriptionID {
-					return false
-				}
-
-				return inventory.NotificationRefersToPool(
-					notification, poolID, tsparams.TestInventoryResourcePool)
-			}),
+			mocksmo.WithMatch(inventory.MatchResourcePoolChange(
+				oranapi.InventoryChangeNotificationEventTypeCreate,
+				consumerSubscriptionID,
+				poolID,
+				tsparams.TestInventoryResourcePool,
+			)),
 		)
 		Expect(err).ToNot(HaveOccurred(), "Failed to receive CREATE inventory notification")
 
@@ -518,19 +507,12 @@ var _ = Describe("ORAN Inventory API Tests", Label(tsparams.LabelPostProvision, 
 			mocksmo.WithStart[oranapi.InventoryChangeNotification](deleteTime),
 			mocksmo.WithObserverID[oranapi.InventoryChangeNotification](consumerSubscriptionID.String()),
 			mocksmo.WithTimeout[oranapi.InventoryChangeNotification](2*time.Minute),
-			mocksmo.WithMatch(func(notification *oranapi.InventoryChangeNotification) bool {
-				if notification.NotificationEventType != oranapi.InventoryChangeNotificationEventTypeDelete {
-					return false
-				}
-
-				if notification.ConsumerSubscriptionId == nil ||
-					*notification.ConsumerSubscriptionId != consumerSubscriptionID {
-					return false
-				}
-
-				return inventory.NotificationRefersToPool(
-					notification, poolID, tsparams.TestInventoryResourcePool)
-			}),
+			mocksmo.WithMatch(inventory.MatchResourcePoolChange(
+				oranapi.InventoryChangeNotificationEventTypeDelete,
+				consumerSubscriptionID,
+				poolID,
+				tsparams.TestInventoryResourcePool,
+			)),
 		)
 		Expect(err).ToNot(HaveOccurred(), "Failed to receive DELETE inventory notification")
 	})

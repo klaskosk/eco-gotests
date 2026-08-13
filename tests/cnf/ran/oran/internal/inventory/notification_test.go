@@ -3,85 +3,48 @@ package inventory
 import (
 	"testing"
 
+	"github.com/google/uuid"
 	oranapi "github.com/rh-ecosystem-edge/eco-goinfra/pkg/oran/api"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/tsparams"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestNotificationRefersToPool(t *testing.T) {
+func TestMatchResourcePoolChange(t *testing.T) {
 	t.Parallel()
 
-	const (
-		poolID   = "abc-123-pool-id"
-		poolName = "test-inventory-pool"
+	const poolID = "abc-123-pool-id"
+
+	subscriptionID := uuid.MustParse("22222222-2222-2222-2222-222222222222")
+
+	match := MatchResourcePoolChange(
+		oranapi.InventoryChangeNotificationEventTypeCreate,
+		subscriptionID,
+		poolID,
+		tsparams.TestInventoryResourcePool,
 	)
 
-	tests := []struct {
-		name         string
-		notification *oranapi.InventoryChangeNotification
-		want         bool
-	}{
-		{
-			name: "match via ObjectRef",
-			notification: &oranapi.InventoryChangeNotification{
-				ObjectRef: new("/resourcePools/" + poolID),
-			},
-			want: true,
-		},
-		{
-			name: "match via PostObjectState resourcePoolId",
-			notification: &oranapi.InventoryChangeNotification{
-				PostObjectState: &map[string]any{
-					"resourcePoolId": poolID,
-				},
-			},
-			want: true,
-		},
-		{
-			name: "match via PostObjectState name",
-			notification: &oranapi.InventoryChangeNotification{
-				PostObjectState: &map[string]any{
-					"name": poolName,
-				},
-			},
-			want: true,
-		},
-		{
-			name: "match via PriorObjectState resourcePoolId",
-			notification: &oranapi.InventoryChangeNotification{
-				PriorObjectState: &map[string]any{
-					"resourcePoolId": poolID,
-				},
-			},
-			want: true,
-		},
-		{
-			name: "match via PriorObjectState name",
-			notification: &oranapi.InventoryChangeNotification{
-				PriorObjectState: &map[string]any{
-					"name": poolName,
-				},
-			},
-			want: true,
-		},
-		{
-			name: "no match",
-			notification: &oranapi.InventoryChangeNotification{
-				ObjectRef: new("/resourcePools/other-id"),
-				PostObjectState: &map[string]any{
-					"resourcePoolId": "other-id",
-					"name":           "other-pool",
-				},
-			},
-			want: false,
-		},
+	postObjectState := map[string]any{
+		"resourcePoolId": poolID,
+		"name":           tsparams.TestInventoryResourcePool,
 	}
 
-	for _, testCase := range tests {
-		t.Run(testCase.name, func(t *testing.T) {
-			t.Parallel()
-
-			got := NotificationRefersToPool(testCase.notification, poolID, poolName)
-			assert.Equal(t, testCase.want, got)
-		})
+	notification := &oranapi.InventoryChangeNotification{
+		NotificationEventType:  oranapi.InventoryChangeNotificationEventTypeCreate,
+		ConsumerSubscriptionId: &subscriptionID,
+		PostObjectState:        &postObjectState,
 	}
+
+	assert.True(t, match(notification))
+	assert.True(t, match(&oranapi.InventoryChangeNotification{
+		NotificationEventType:  oranapi.InventoryChangeNotificationEventTypeCreate,
+		ConsumerSubscriptionId: &subscriptionID,
+		ObjectRef:              new("/resourcePools/" + poolID),
+	}))
+
+	assert.False(t, match(nil))
+	assert.False(t, match(&oranapi.InventoryChangeNotification{
+		NotificationEventType:  oranapi.InventoryChangeNotificationEventTypeDelete,
+		ConsumerSubscriptionId: &subscriptionID,
+		PostObjectState:        &postObjectState,
+	}))
 }

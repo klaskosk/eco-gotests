@@ -11,6 +11,7 @@ import (
 	"github.com/rh-ecosystem-edge/eco-goinfra/pkg/ocm"
 	oranapi "github.com/rh-ecosystem-edge/eco-goinfra/pkg/oran/api"
 	agentInstallV1Beta1 "github.com/rh-ecosystem-edge/eco-goinfra/pkg/schemes/assisted/api/v1beta1"
+	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/o2imstest"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/tsparams"
 )
 
@@ -222,6 +223,7 @@ func FindClusterResourceForAgent(
 	agent *agentInstallV1Beta1.Agent,
 ) (oranapi.ClusterResource, error) {
 	expectedName := ExpectedClusterResourceName(agent)
+
 	expectedResourceID, idErr := ExpectedInventoryResourceID(agent)
 	if idErr != nil {
 		return oranapi.ClusterResource{}, idErr
@@ -267,18 +269,19 @@ func FindClusterResourceForAgent(
 	return *match, nil
 }
 
+// clusterResourceCPUMatchesKey reports whether resource extensions.cpu matches the expected type key.
 func clusterResourceCPUMatchesKey(resource oranapi.ClusterResource, key ClusterResourceTypeKey) bool {
 	if resource.Extensions == nil {
 		return false
 	}
 
-	cpuRaw, ok := (*resource.Extensions)["cpu"]
-	if !ok {
+	cpuRaw, found := (*resource.Extensions)["cpu"]
+	if !found {
 		return false
 	}
 
-	cpuMap, ok := asStringKeyedMap(cpuRaw)
-	if !ok {
+	cpuMap, converted := o2imstest.AsStringKeyedMap(cpuRaw)
+	if !converted {
 		return false
 	}
 
