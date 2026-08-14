@@ -27,8 +27,15 @@ import (
 // NewProvisioningRequest creates a ProvisioningRequest builder with templateVersion, setting all the required
 // parameters and using the affix from RANConfig.
 func NewProvisioningRequest(client runtimeclient.Client, templateVersion string) *oran.ProvisioningRequestBuilder {
+	return NewProvisioningRequestNamed(client, tsparams.TestPRName, templateVersion)
+}
+
+// NewProvisioningRequestNamed creates a ProvisioningRequest builder with the given name and templateVersion,
+// setting all the required parameters and using the affix from RANConfig.
+func NewProvisioningRequestNamed(
+	client runtimeclient.Client, name, templateVersion string) *oran.ProvisioningRequestBuilder {
 	versionWithAffix := RANConfig.ClusterTemplateAffix + "-" + templateVersion
-	prBuilder := oran.NewPRBuilder(client, tsparams.TestPRName, tsparams.ClusterTemplateName, versionWithAffix).
+	prBuilder := oran.NewPRBuilder(client, name, tsparams.ClusterTemplateName, versionWithAffix).
 		WithTemplateParameter("nodeClusterName", RANConfig.Spoke1Name).
 		WithTemplateParameter("oCloudSiteId", tsparams.OCloudSiteID).
 		WithTemplateParameter("policyTemplateParameters", map[string]any{}).
@@ -40,6 +47,24 @@ func NewProvisioningRequest(client runtimeclient.Client, templateVersion string)
 		})
 
 	return prBuilder
+}
+
+// WithClusterInstanceClusterName sets clusterInstanceParameters.clusterName on the ProvisioningRequest builder.
+func WithClusterInstanceClusterName(
+	prBuilder *oran.ProvisioningRequestBuilder, clusterName string) *oran.ProvisioningRequestBuilder {
+	templateParameters, err := prBuilder.GetTemplateParameters()
+	if err != nil {
+		return prBuilder
+	}
+
+	clusterInstanceParams, ok := templateParameters[tsparams.ClusterInstanceParamsKey].(map[string]any)
+	if !ok {
+		return prBuilder
+	}
+
+	clusterInstanceParams["clusterName"] = clusterName
+
+	return prBuilder.WithTemplateParameter(tsparams.ClusterInstanceParamsKey, clusterInstanceParams)
 }
 
 // NewSecondaryProvisioningRequest creates a ProvisioningRequest builder for a secondary PR using TestPRName2 and

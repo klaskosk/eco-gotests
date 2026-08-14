@@ -23,6 +23,8 @@ const (
 	LabelInventory = "inventory"
 	// LabelClusterAPI is the label applied to just the cluster API test cases.
 	LabelClusterAPI = "cluster-api"
+	// LabelSecurity is the label applied to O-Cloud Manager security hardening test cases.
+	LabelSecurity = "security"
 )
 
 const (
@@ -63,6 +65,17 @@ const (
 	// PRMissingBootInterfaceDetailsSubstring is a substring of provisioningDetails when no NIC in the
 	// ClusterInstance defaults matches the boot interface label value.
 	PRMissingBootInterfaceDetailsSubstring = "no NIC found matching boot interface label value"
+	// PRExistingNamespaceDetailsSubstring is a substring of provisioningDetails when clusterName matches an
+	// existing namespace not owned by the ProvisioningRequest.
+	PRExistingNamespaceDetailsSubstring = "already exists"
+	// PRReservedNamespaceDetailsSubstring is a substring of API error detail when clusterName is a reserved namespace.
+	PRReservedNamespaceDetailsSubstring = "reserved namespace"
+	// PROpenshiftPrefixDetailsSubstring is a substring of API error detail when clusterName uses the openshift- prefix.
+	PROpenshiftPrefixDetailsSubstring = "openshift-"
+	// PRKubePrefixDetailsSubstring is a substring of API error detail when clusterName uses the kube- prefix.
+	PRKubePrefixDetailsSubstring = "kube-"
+	// PRDNS1123DetailsSubstring is a substring of API error detail when clusterName is not DNS-1123 compliant.
+	PRDNS1123DetailsSubstring = "DNS-1123"
 )
 
 const (
@@ -116,6 +129,10 @@ const (
 	// TestPRName2 is the second UUID used for naming ProvisioningRequests. Metal3 tests require a second PR applied
 	// to verify the case of all hardware already allocated.
 	TestPRName2 = "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+	// TestPRNameSecurity is the UUID used for security hardening ProvisioningRequest tests.
+	TestPRNameSecurity = "b2c3d4e5-f6a7-8901-2345-678901bcdef0"
+	// TestExistingNamespace is a namespace created manually for clusterName ownership validation tests.
+	TestExistingNamespace = "oran-test-existing-ns"
 	// TestBase64Credential is a base64 encoded version of the string "wrongpassword" for when an obviously invalid
 	// credential is needed.
 	TestBase64Credential = "d3JvbmdwYXNzd29yZA=="
