@@ -469,8 +469,8 @@ github.com/kevinburke/ssh_config v1.6.0/go.mod h1:q2RIzfka+BXARoNexmF9gkxEX7Dmvb
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
-github.com/klaskosk/eco-goinfra v0.0.0-20260813001341-01a8c6e59f47 h1:sUeveUM/avLZTwRa+8ZUEexJ4XAnUDwa9w6nGTkuJog=
-github.com/klaskosk/eco-goinfra v0.0.0-20260813001341-01a8c6e59f47/go.mod h1:ByDP+q4OVPg0a46SV5PCl3dAB91hOkqAqFHvv3cJC+U=
+github.com/klaskosk/eco-goinfra v0.0.0-20260814145625-841fe67c11bc h1:L6yZe9UWIfIYCPoIQoXhoscr4G32tFZae3KhJ2IYz48=
+github.com/klaskosk/eco-goinfra v0.0.0-20260814145625-841fe67c11bc/go.mod h1:ByDP+q4OVPg0a46SV5PCl3dAB91hOkqAqFHvv3cJC+U=
 github.com/klauspost/compress v1.19.0 h1:sXLILfc9jV2QYWkzFOPWStmcUVH2RHEB1JCdY2oVvCQ=
 github.com/klauspost/compress v1.19.0/go.mod h1:cwPg85FWrGar70rWktvGQj8/hthj3wpl0PGDogxkrSQ=
 github.com/klauspost/cpuid/v2 v2.3.0 h1:S4CRMLnYUhGeDFDqkGriYKdfoFlDnMtqTiI/sFzhA9Y=
