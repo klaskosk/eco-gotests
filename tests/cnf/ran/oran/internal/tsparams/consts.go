@@ -67,15 +67,15 @@ const (
 	PRMissingBootInterfaceDetailsSubstring = "no NIC found matching boot interface label value"
 	// PRExistingNamespaceDetailsSubstring is a substring of provisioningDetails when clusterName matches an
 	// existing namespace not owned by the ProvisioningRequest.
-	PRExistingNamespaceDetailsSubstring = "already exists"
+	PRExistingNamespaceDetailsSubstring = "not owned by ProvisioningRequest"
 	// PRReservedNamespaceDetailsSubstring is a substring of API error detail when clusterName is a reserved namespace.
-	PRReservedNamespaceDetailsSubstring = "reserved namespace"
+	PRReservedNamespaceDetailsSubstring = `targets a reserved namespace (prefix "default")`
 	// PROpenshiftPrefixDetailsSubstring is a substring of API error detail when clusterName uses the openshift- prefix.
-	PROpenshiftPrefixDetailsSubstring = "openshift-"
+	PROpenshiftPrefixDetailsSubstring = `targets a reserved namespace (prefix "openshift-")`
 	// PRKubePrefixDetailsSubstring is a substring of API error detail when clusterName uses the kube- prefix.
-	PRKubePrefixDetailsSubstring = "kube-"
+	PRKubePrefixDetailsSubstring = `targets a reserved namespace (prefix "kube-")`
 	// PRDNS1123DetailsSubstring is a substring of API error detail when clusterName is not DNS-1123 compliant.
-	PRDNS1123DetailsSubstring = "DNS-1123"
+	PRDNS1123DetailsSubstring = "not a valid DNS-1123 label"
 )
 
 const (
