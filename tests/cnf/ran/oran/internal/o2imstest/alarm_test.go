@@ -13,11 +13,10 @@ import (
 func TestVerifyAlarmDictionaryStructure(t *testing.T) {
 	t.Parallel()
 
-	dictionaryID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
 	severityFields := map[string]any{tsparams.AlarmDefinitionSeverityField: "critical"}
 
 	valid := oranapi.AlarmDictionary{
-		AlarmDictionaryId:            dictionaryID,
+		AlarmDictionaryId:            uuid.MustParse("11111111-1111-1111-1111-111111111111"),
 		AlarmDictionarySchemaVersion: "1.0.0",
 		AlarmDictionaryVersion:       "1.0.0",
 		EntityType:                   "NodeClusterType",
@@ -30,79 +29,145 @@ func TestVerifyAlarmDictionaryStructure(t *testing.T) {
 	}
 
 	tests := []struct {
-		name    string
-		mutate  func(dictionary oranapi.AlarmDictionary) oranapi.AlarmDictionary
-		wantErr bool
+		name       string
+		dictionary oranapi.AlarmDictionary
+		wantErr    bool
 	}{
 		{
-			name:   "valid",
-			mutate: func(dictionary oranapi.AlarmDictionary) oranapi.AlarmDictionary { return dictionary },
+			name:       "valid",
+			dictionary: valid,
 		},
 		{
 			name: "nil alarmDictionaryId",
-			mutate: func(dictionary oranapi.AlarmDictionary) oranapi.AlarmDictionary {
+			dictionary: func() oranapi.AlarmDictionary {
+				dictionary := valid
 				dictionary.AlarmDictionaryId = uuid.Nil
 
 				return dictionary
-			},
+			}(),
 			wantErr: true,
 		},
 		{
 			name: "empty schema version",
-			mutate: func(dictionary oranapi.AlarmDictionary) oranapi.AlarmDictionary {
+			dictionary: func() oranapi.AlarmDictionary {
+				dictionary := valid
 				dictionary.AlarmDictionarySchemaVersion = ""
 
 				return dictionary
-			},
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "empty alarm dictionary version",
+			dictionary: func() oranapi.AlarmDictionary {
+				dictionary := valid
+				dictionary.AlarmDictionaryVersion = ""
+
+				return dictionary
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "empty entityType",
+			dictionary: func() oranapi.AlarmDictionary {
+				dictionary := valid
+				dictionary.EntityType = ""
+
+				return dictionary
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "empty vendor",
+			dictionary: func() oranapi.AlarmDictionary {
+				dictionary := valid
+				dictionary.Vendor = ""
+
+				return dictionary
+			}(),
 			wantErr: true,
 		},
 		{
 			name: "empty alarm definitions",
-			mutate: func(dictionary oranapi.AlarmDictionary) oranapi.AlarmDictionary {
+			dictionary: func() oranapi.AlarmDictionary {
+				dictionary := valid
 				dictionary.AlarmDefinition = nil
 
 				return dictionary
-			},
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "empty alarmName",
+			dictionary: func() oranapi.AlarmDictionary {
+				dictionary := valid
+				dictionary.AlarmDefinition = []oranapi.AlarmDefinition{{
+					AlarmName:             "",
+					AlarmDescription:      "test alarm",
+					AlarmAdditionalFields: &severityFields,
+				}}
+
+				return dictionary
+			}(),
+			wantErr: true,
+		},
+		{
+			name: "empty alarmDescription",
+			dictionary: func() oranapi.AlarmDictionary {
+				dictionary := valid
+				dictionary.AlarmDefinition = []oranapi.AlarmDefinition{{
+					AlarmName:             "TestAlarm",
+					AlarmDescription:      "",
+					AlarmAdditionalFields: &severityFields,
+				}}
+
+				return dictionary
+			}(),
 			wantErr: true,
 		},
 		{
 			name: "missing severity key",
-			mutate: func(dictionary oranapi.AlarmDictionary) oranapi.AlarmDictionary {
-				fields := map[string]any{"other": "value"}
+			dictionary: func() oranapi.AlarmDictionary {
+				dictionary := valid
 				dictionary.AlarmDefinition = []oranapi.AlarmDefinition{{
-					AlarmName:             "TestAlarm",
-					AlarmDescription:      "test alarm",
-					AlarmAdditionalFields: &fields,
+					AlarmName:        "TestAlarm",
+					AlarmDescription: "test alarm",
+					AlarmAdditionalFields: new(map[string]any{
+						"other": "value",
+					}),
 				}}
 
 				return dictionary
-			},
+			}(),
 			wantErr: true,
 		},
 		{
 			name: "nil additional fields",
-			mutate: func(dictionary oranapi.AlarmDictionary) oranapi.AlarmDictionary {
+			dictionary: func() oranapi.AlarmDictionary {
+				dictionary := valid
 				dictionary.AlarmDefinition = []oranapi.AlarmDefinition{{
 					AlarmName:        "TestAlarm",
 					AlarmDescription: "test alarm",
 				}}
 
 				return dictionary
-			},
+			}(),
 			wantErr: true,
 		},
 		{
 			name: "empty severity value allowed",
-			mutate: func(dictionary oranapi.AlarmDictionary) oranapi.AlarmDictionary {
-				fields := map[string]any{tsparams.AlarmDefinitionSeverityField: ""}
+			dictionary: func() oranapi.AlarmDictionary {
+				dictionary := valid
 				dictionary.AlarmDefinition = []oranapi.AlarmDefinition{{
-					AlarmName:             "TestAlarm",
-					AlarmDescription:      "test alarm",
-					AlarmAdditionalFields: &fields,
+					AlarmName:        "TestAlarm",
+					AlarmDescription: "test alarm",
+					AlarmAdditionalFields: new(map[string]any{
+						tsparams.AlarmDefinitionSeverityField: "",
+					}),
 				}}
 
 				return dictionary
-			},
+			}(),
 		},
 	}
 
@@ -110,7 +175,7 @@ func TestVerifyAlarmDictionaryStructure(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
-			err := VerifyAlarmDictionaryStructure(testCase.mutate(valid))
+			err := VerifyAlarmDictionaryStructure(testCase.dictionary)
 			if testCase.wantErr {
 				assert.Error(t, err)
 			} else {
