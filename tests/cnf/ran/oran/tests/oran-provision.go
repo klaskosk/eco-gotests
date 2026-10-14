@@ -23,6 +23,8 @@ import (
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/helper"
 	"github.com/rh-ecosystem-edge/eco-gotests/tests/cnf/ran/oran/internal/tsparams"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog/v2"
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
@@ -181,14 +183,14 @@ func verifyProvisioningRequestFulfilled(prBuilder *oran.ProvisioningRequestBuild
 			fmt.Errorf("expected provisioned node cluster ID after fulfillment"))
 	}
 
-	By("verifying the ClusterDetails are set")
+	By("verifying the ClusterDetails are set and ZTP is done")
 
-	if status.Extensions.ClusterDetails == nil ||
-		status.Extensions.ClusterDetails.Name != RANConfig.Spoke1Name {
-		accumulatedErrors = append(accumulatedErrors, fmt.Errorf(
-			"expected cluster name %q in extensions, got %#v",
-			RANConfig.Spoke1Name, status.Extensions.ClusterDetails))
-	}
+	accumulatedErrors = append(accumulatedErrors,
+		verifyFulfilledClusterDetails(status.Extensions.ClusterDetails, RANConfig.Spoke1Name)...)
+
+	By("verifying ClusterProvisioned and ConfigurationApplied conditions are true")
+
+	accumulatedErrors = append(accumulatedErrors, verifyProvisioningRequestFulfillmentConditions(status.Conditions)...)
 
 	By("verifying the InfrastructureResourceStatuses are set")
 
@@ -224,6 +226,55 @@ func verifyProvisioningRequestFulfilled(prBuilder *oran.ProvisioningRequestBuild
 	}
 
 	return errors.Join(accumulatedErrors...)
+}
+
+// verifyFulfilledClusterDetails checks the cluster identity and ZTP status after the ProvisioningRequest is fulfilled.
+func verifyFulfilledClusterDetails(
+	clusterDetails *provisioningv1alpha1.ClusterDetails, expectedClusterName string) []error {
+	var accumulatedErrors []error
+
+	if clusterDetails == nil {
+		return []error{fmt.Errorf("expected ClusterDetails in extensions after fulfillment")}
+	}
+
+	if clusterDetails.Name != expectedClusterName {
+		accumulatedErrors = append(accumulatedErrors, fmt.Errorf(
+			"expected cluster name %q in extensions, got %q", expectedClusterName, clusterDetails.Name))
+	}
+
+	if clusterDetails.ZtpStatus != "ZTP Done" {
+		accumulatedErrors = append(accumulatedErrors, fmt.Errorf(
+			"expected ZTP status %q after fulfillment, got %q", "ZTP Done", clusterDetails.ZtpStatus))
+	}
+
+	return accumulatedErrors
+}
+
+// verifyProvisioningRequestFulfillmentConditions checks the conditions that the provisioning guide marks successful
+// after the ProvisioningRequest is fulfilled.
+func verifyProvisioningRequestFulfillmentConditions(conditions []metav1.Condition) []error {
+	var accumulatedErrors []error
+
+	for _, conditionType := range []provisioningv1alpha1.ConditionType{
+		provisioningv1alpha1.PRconditionTypes.ClusterProvisioned,
+		provisioningv1alpha1.PRconditionTypes.ConfigurationApplied,
+	} {
+		condition := meta.FindStatusCondition(conditions, string(conditionType))
+		if condition == nil {
+			accumulatedErrors = append(accumulatedErrors, fmt.Errorf(
+				"expected ProvisioningRequest condition %q to be present after fulfillment", conditionType))
+
+			continue
+		}
+
+		if condition.Status != metav1.ConditionTrue {
+			accumulatedErrors = append(accumulatedErrors, fmt.Errorf(
+				"expected ProvisioningRequest condition %q to be True, got %q (reason: %q, message: %q)",
+				conditionType, condition.Status, condition.Reason, condition.Message))
+		}
+	}
+
+	return accumulatedErrors
 }
 
 // verifyProvisionedInfrastructureResources checks each infrastructure resource is provisioned and has an AllocatedNode.
